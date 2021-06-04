@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
 import datetime
+import json
 import logging
 import sys
 import time
+import urllib.request
 
 import moduleTwitter
 
@@ -27,15 +29,34 @@ def main():
               'valle': '🟢',
               'punta': '🔴'}
 
+
+
     logging.basicConfig(
         stream=sys.stdout, level=logging.INFO, format="%(asctime)s %(message)s"
     )
 
     now = datetime.datetime.now()
+    print(f'{now.strftime("%Y-%m-%dT%H:%M")}')
+    delta = datetime.timedelta(hours=0, minutes=-20)
+    urlPrecio = ('https://apidatos.ree.es/es/datos/mercados/precios-mercados-tiempo-real?'
+     f'start_date={(now+delta).strftime("%Y-%m-%dT%H:%M")}'
+     f'&end_date={(now).strftime("%Y-%m-%dT%H:%M")}'
+     '&time_trunc=hour')
+    # https://pybonacci.org/2020/05/12/demanda-electrica-en-espana-durante-el-confinamiento-covid-19-visto-con-python/
+    # https://www.ree.es/es/apidatos
+
+
+    data = json.loads(urllib.request.urlopen(urlPrecio).read())
+    print(data)
+
+    tipo = data['included'][0]['attributes']['title']
+    precio = data['included'][0]['attributes']['values'][0]['value']
+
     hh = now.hour
     mm = now.minute
     msg = f"{button['valle']} Son las {hh:0>2}:{mm:0>2} "\
-          f" y estamos en hora valle [00:00 - 8:00]"
+          f" y estamos en hora valle [00:00 - 8:00]."\
+          f" Precio: {precio} ({tipo})."
     for hours in ranges:
         #start = ranges[hours][0]
         #start = datetime.datetime.strptime(f"{date} {start}", "%Y-%m-%d %H:%M")
@@ -47,7 +68,8 @@ def main():
             if tipoHora[-1].isdigit(): 
                 tipoHora = tipoHora[:-1]
             msg = (f"{button[tipoHora]} Son las {hh:0>2}:{mm:0>2} "\
-                   f"y estamos en hora {tipoHora} {ranges[hours]}")
+                   f"y estamos en hora {tipoHora} {ranges[hours]}"\
+                   f" Precio: {precio} ({tipo}).")
 
     print (msg)
 
