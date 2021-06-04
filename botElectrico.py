@@ -37,9 +37,9 @@ def main():
 
     now = datetime.datetime.now()
     print(f'{now.strftime("%Y-%m-%dT%H:%M")}')
-    delta = datetime.timedelta(hours=0, minutes=-20)
+    delta = datetime.timedelta(hours=1, minutes=00)
     urlPrecio = ('https://apidatos.ree.es/es/datos/mercados/precios-mercados-tiempo-real?'
-     f'start_date={(now+delta).strftime("%Y-%m-%dT%H:%M")}'
+     f'start_date={(now-delta).strftime("%Y-%m-%dT%H:%M")}'
      f'&end_date={(now).strftime("%Y-%m-%dT%H:%M")}'
      '&time_trunc=hour')
     # https://pybonacci.org/2020/05/12/demanda-electrica-en-espana-durante-el-confinamiento-covid-19-visto-con-python/
@@ -56,7 +56,7 @@ def main():
     mm = now.minute
     msg = f"{button['valle']} Son las {hh:0>2}:{mm:0>2} "\
           f" y estamos en hora valle [00:00 - 8:00]."\
-          f" Precio: {precio} ({tipo})."
+          f"\n         Precio: {precio} ({tipo})."
     for hours in ranges:
         #start = ranges[hours][0]
         #start = datetime.datetime.strptime(f"{date} {start}", "%Y-%m-%d %H:%M")
@@ -69,7 +69,7 @@ def main():
                 tipoHora = tipoHora[:-1]
             msg = (f"{button[tipoHora]} Son las {hh:0>2}:{mm:0>2} "\
                    f"y estamos en hora {tipoHora} {ranges[hours]}"\
-                   f" Precio: {precio} ({tipo}).")
+                   f"\n         Precio: {precio} ({tipo}).")
 
     print (msg)
 
