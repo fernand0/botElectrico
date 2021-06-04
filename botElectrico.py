@@ -31,8 +31,11 @@ def main():
         stream=sys.stdout, level=logging.INFO, format="%(asctime)s %(message)s"
     )
 
-    msg = "Estamos en hora valle [00:00 - 8:00] {button['valle']}"
     now = datetime.datetime.now()
+    hh = now.hour
+    mm = now.minute
+    msg = f"{button['valle']} Son las {hh:0>2}:{mm:0>2} "\
+          f" y estamos en hora valle [00:00 - 8:00]"
     for hours in ranges:
         #start = ranges[hours][0]
         #start = datetime.datetime.strptime(f"{date} {start}", "%Y-%m-%d %H:%M")
@@ -40,8 +43,6 @@ def main():
         end = convertToDatetime(ranges[hours][1])
 
         if ((now.weekday()<=5) and (now >= start) and (now < end)):
-            hh = now.hour
-            mm = now.minute
             tipoHora = hours
             if tipoHora[-1].isdigit(): 
                 tipoHora = tipoHora[:-1]
