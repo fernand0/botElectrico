@@ -17,9 +17,10 @@ def convertToDatetime(myTime):
 
 def main():
 
-    ranges = {'punta': ["10:00","14:00"],
-              'llana1': ["8:00", "10:00"],
+    ranges = {'llana1': ["8:00", "10:00"], 
+              'punta1': ["10:00","14:00"],
               'llana2': ["14:00", "18:00"],
+              'punta2': ["18:00", "22:00"],
               'llana3': ["22:00","0:0"]}
 
     logging.basicConfig(
@@ -34,10 +35,14 @@ def main():
         start = convertToDatetime(ranges[hours][0])
         end = convertToDatetime(ranges[hours][1])
 
-        if (now >= start) and (now <= end):
+        if ((now.weekday()<=5) and (now >= start) and (now < end)):
             hh = now.hour
             mm = now.minute
-            msg = (f"Son las {hh}:{mm} y estamos en hora {hours} {ranges[hours]}")
+            tipoHora = hours
+            if tipoHora[-1].isdigit(): 
+                tipoHora = tipoHora[:-1]
+            msg = (f"Son las {hh:0>2}:{mm:0>2} y estamos en hora "\
+                   f"{tipoHora} {ranges[hours]}")
 
     print (msg)
 
