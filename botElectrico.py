@@ -17,17 +17,21 @@ def convertToDatetime(myTime):
 
 def main():
 
-    ranges = {'llana1': ["8:00", "10:00"], 
-              'punta1': ["10:00","14:00"],
+    ranges = {'llana1': [ "8:00", "10:00"], 
+              'punta1': ["10:00", "14:00"],
               'llana2': ["14:00", "18:00"],
               'punta2': ["18:00", "22:00"],
-              'llana3': ["22:00","0:0"]}
+              'llana3': ["22:00", "00:00"]}
+
+    button = {'llana': '🟠',
+              'valle': '🟢',
+              'punta': '🔴'}
 
     logging.basicConfig(
         stream=sys.stdout, level=logging.INFO, format="%(asctime)s %(message)s"
     )
 
-    msg = "Estamos en hora valle [00:00 - 8:00]"
+    msg = "Estamos en hora valle [00:00 - 8:00] {button['valle']}"
     now = datetime.datetime.now()
     for hours in ranges:
         #start = ranges[hours][0]
@@ -41,8 +45,8 @@ def main():
             tipoHora = hours
             if tipoHora[-1].isdigit(): 
                 tipoHora = tipoHora[:-1]
-            msg = (f"Son las {hh:0>2}:{mm:0>2} y estamos en hora "\
-                   f"{tipoHora} {ranges[hours]}")
+            msg = (f"{button[tipoHora]} Son las {hh:0>2}:{mm:0>2} "\
+                   f"y estamos en hora {tipoHora} {ranges[hours]}")
 
     print (msg)
 
