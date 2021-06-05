@@ -1,13 +1,24 @@
 #!/usr/bin/env python
 
 import datetime
+import getpass
 import json
+import keyring
 import logging
 import sys
 import time
-import urllib.request
+import requests
 
 import moduleTwitter
+
+def getPassword(server, user):
+    # Para borrar keyring.delete_password(server, user)
+    password = keyring.get_password(server, user)
+    if not password:
+        logging.info("[%s,%s] New account. Setting password" % (server, user))
+        password = getpass.getpass()
+        keyring.set_password(server, user, password)
+    return password
 
 def convertToDatetime(myTime):
     now = datetime.datetime.now()
@@ -30,7 +41,6 @@ def main():
               'punta': '🔴'}
 
 
-
     logging.basicConfig(
         stream=sys.stdout, level=logging.INFO, format="%(asctime)s %(message)s"
     )
@@ -38,24 +48,31 @@ def main():
     now = datetime.datetime.now()
     print(f'{now.strftime("%Y-%m-%dT%H:%M")}')
     delta = datetime.timedelta(hours=1, minutes=00)
-    urlPrecio = ('https://apidatos.ree.es/es/datos/mercados/precios-mercados-tiempo-real?'
-     f'start_date={(now-delta).strftime("%Y-%m-%dT%H:%M")}'
-     f'&end_date={(now).strftime("%Y-%m-%dT%H:%M")}'
-     '&time_trunc=hour')
+    apiBase ='https://apidatos.ree.es/'
+    urlPrecio = (f'{apiBase}es/datos/mercados/precios-mercados-tiempo-real?'
+                 f'start_date={(now-delta).strftime("%Y-%m-%dT%H:%M")}'
+                 f'&end_date={(now).strftime("%Y-%m-%dT%H:%M")}'
+                 '&time_trunc=hour')
+    token = getPassword(apiBase, 'fernand0@elmundoesimperfecto.com')
+    headers = {"Authorization": f'Token token="{token}"'}
+
     # https://pybonacci.org/2020/05/12/demanda-electrica-en-espana-durante-el-confinamiento-covid-19-visto-con-python/
+    # https://api.esios.ree.es/
     # https://www.ree.es/es/apidatos
 
-
-    data = json.loads(urllib.request.urlopen(urlPrecio).read())
+    result = requests.get(urlPrecio, headers=headers)
+    data = json.loads(result.content)
 
     tipo = data['included'][0]['attributes']['title']
     precio = data['included'][0]['attributes']['values'][0]['value']
 
     hh = now.hour
     mm = now.minute
-    msg = f"{button['valle']} Son las {hh:0>2}:{mm:0>2} "\
-          f" y estamos en hora valle [00:00 - 8:00]."\
-          f"\n         Precio: {precio} ({tipo})."
+    msgBase = f"Son las {hh:0>2}:{mm:0>2} "\
+              f" y estamos en hora valle."\
+              f"\n         Precio: {precio} ({tipo})."\
+              f"\n         Esta franja "
+    franja = 'valle'
     for hours in ranges:
         #start = ranges[hours][0]
         #start = datetime.datetime.strptime(f"{date} {start}", "%Y-%m-%d %H:%M")
@@ -66,11 +83,19 @@ def main():
             tipoHora = hours
             if tipoHora[-1].isdigit(): 
                 tipoHora = tipoHora[:-1]
-            msg = (f"{button[tipoHora]} Son las {hh:0>2}:{mm:0>2} "\
-                   f"y estamos en hora {tipoHora} {ranges[hours]}"\
-                   f"\n         Precio: {precio} ({tipo}).")
+            franja = hours
+
+    
+    if franja == 'valle':
+        if now.weekday()<=4:
+            msgFranja = 'va desde las 00:00 hasta las 8:00'
         else:
-            print("no")
+            msgFranja = 'dura todo el fin de semana'
+    else:
+        msgFranja = 'va desde {ranges[franja][0]} hasta {ranges[franja][1]}'
+
+    msg = f'{button[franja]} {msgBase} {msgFranja}'
+    print(msg)
 
     tw = moduleTwitter.moduleTwitter()
     tw.setClient("botElectrico")
