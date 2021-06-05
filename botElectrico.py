@@ -21,9 +21,9 @@ def main():
 
     ranges = {'llana1': [ "8:00", "10:00"], 
               'punta1': ["10:00", "14:00"],
-              'llana2': ["14:00", "18:00"],
+              'llana1': ["14:00", "18:00"],
               'punta2': ["18:00", "22:00"],
-              'llana3': ["22:00", "00:00"]}
+              'llana3': ["22:00", "23:59"]}
 
     button = {'llana': '🟠',
               'valle': '🟢',
@@ -47,7 +47,6 @@ def main():
 
 
     data = json.loads(urllib.request.urlopen(urlPrecio).read())
-    print(data)
 
     tipo = data['included'][0]['attributes']['title']
     precio = data['included'][0]['attributes']['values'][0]['value']
@@ -63,15 +62,15 @@ def main():
         start = convertToDatetime(ranges[hours][0])
         end = convertToDatetime(ranges[hours][1])
 
-        if ((now.weekday()<=5) and (now >= start) and (now < end)):
+        if (now.weekday()<=4) and ((start <= now) and (now < end)):
             tipoHora = hours
             if tipoHora[-1].isdigit(): 
                 tipoHora = tipoHora[:-1]
             msg = (f"{button[tipoHora]} Son las {hh:0>2}:{mm:0>2} "\
                    f"y estamos en hora {tipoHora} {ranges[hours]}"\
                    f"\n         Precio: {precio} ({tipo}).")
-
-    print (msg)
+        else:
+            print("no")
 
     tw = moduleTwitter.moduleTwitter()
     tw.setClient("botElectrico")
