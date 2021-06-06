@@ -77,7 +77,7 @@ def main():
     precioSig = float(precioSig)/1000
     tipo = tipo.replace('M','k')
     if precioSig > precio:
-        sigSymbol ="↗'"
+        sigSymbol ="↗"
     else:
         sigSymbol ="↘"
 
@@ -87,9 +87,9 @@ def main():
     msgBase = f"Son las {hh:0>2}:{mm:0>2} "\
               f" y estamos en hora valle."\
               f"\n         Precio: {precio} ({tipo})."\
-              f"\n         Esta franja "\
-              f"\n         En la hora siguiente el precio será ({sigSymbol}):"\
-              f"{precioSig} "
+              f"\n         En la hora siguiente el precio será ({sigSymbol}): "\
+              f"{precioSig:.3f} "\
+              f"\n         Esta franja "
     franja = 'valle'
     for hours in ranges:
         #start = ranges[hours][0]
