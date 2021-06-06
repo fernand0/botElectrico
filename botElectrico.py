@@ -51,33 +51,45 @@ def main():
     apiBase ='https://apidatos.ree.es/'
     urlPrecio = (f'{apiBase}es/datos/mercados/precios-mercados-tiempo-real?'
                  f'start_date={(now-delta).strftime("%Y-%m-%dT%H:%M")}'
-                 f'&end_date={(now).strftime("%Y-%m-%dT%H:%M")}'
+                 f'&end_date={(now+delta).strftime("%Y-%m-%dT%H:%M")}'
                  '&time_trunc=hour')
-    token = getPassword(apiBase, 'fernand0@elmundoesimperfecto.com')
-    headers = {"Authorization": f'Token token="{token}"'}
+    # Authorization token is not needed.
+    # token = getPassword(apiBase, 'fernand0@elmundoesimperfecto.com')
+    # headers = {"Authorization": f'Token token="{token}"'}
 
     # https://pybonacci.org/2020/05/12/demanda-electrica-en-espana-durante-el-confinamiento-covid-19-visto-con-python/
     # https://api.esios.ree.es/
     # https://www.ree.es/es/apidatos
 
     ses = requests.Session()
-    ses.headers.update(headers)
+    # ses.headers.update(headers)
     # print(ses.headers)
     # print(ses.headers['Authorization'])
-    result = ses.get(urlPrecio, headers=headers)
+    result = ses.get(urlPrecio)
     data = json.loads(result.content)
     # print(result.headers)
     # return
 
     tipo = data['included'][0]['attributes']['title']
     precio = data['included'][0]['attributes']['values'][0]['value']
+    precioSig = data['included'][0]['attributes']['values'][1]['value']
+    precio = float(precio)/1000
+    precioSig = float(precioSig)/1000
+    tipo = tipo.replace('M','k')
+    if precioSig > precio:
+        sigSymbol ="↗'"
+    else:
+        sigSymbol ="↘"
+
 
     hh = now.hour
     mm = now.minute
     msgBase = f"Son las {hh:0>2}:{mm:0>2} "\
               f" y estamos en hora valle."\
               f"\n         Precio: {precio} ({tipo})."\
-              f"\n         Esta franja "
+              f"\n         Esta franja "\
+              f"\n         En la hora siguiente el precio será ({sigSymbol}):"\
+              f"{precioSig} "
     franja = 'valle'
     for hours in ranges:
         #start = ranges[hours][0]
