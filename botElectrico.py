@@ -86,7 +86,7 @@ def main():
     mm = now.minute
     msgBase = f"Son las {hh:0>2}:{mm:0>2} "\
               f" y estamos en hora valle."\
-              f"\n         Precio: {precio} ({tipo})."\
+              f"\n         Precio: {precio:.3f} ({tipo})."\
               f"\n         En la hora siguiente el precio será ({sigSymbol}): "\
               f"{precioSig:.3f} "\
               f"\n         Esta franja "
