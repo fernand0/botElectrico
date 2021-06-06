@@ -10,6 +10,7 @@ import time
 import requests
 
 import moduleTwitter
+from configMod import *
 
 def getPassword(server, user):
     # Para borrar keyring.delete_password(server, user)
@@ -40,7 +41,6 @@ def main():
               'valle': '🟢',
               'punta': '🔴'}
 
-
     logging.basicConfig(
         stream=sys.stdout, level=logging.INFO, format="%(asctime)s %(message)s"
     )
@@ -60,8 +60,14 @@ def main():
     # https://api.esios.ree.es/
     # https://www.ree.es/es/apidatos
 
-    result = requests.get(urlPrecio, headers=headers)
+    ses = requests.Session()
+    ses.headers.update(headers)
+    # print(ses.headers)
+    # print(ses.headers['Authorization'])
+    result = ses.get(urlPrecio, headers=headers)
     data = json.loads(result.content)
+    # print(result.headers)
+    # return
 
     tipo = data['included'][0]['attributes']['title']
     precio = data['included'][0]['attributes']['values'][0]['value']
@@ -85,7 +91,6 @@ def main():
                 tipoHora = tipoHora[:-1]
             franja = hours
 
-    
     if franja == 'valle':
         if now.weekday()<=4:
             msgFranja = 'va desde las 00:00 hasta las 8:00'
@@ -97,10 +102,16 @@ def main():
     msg = f'{button[franja]} {msgBase} {msgFranja}'
     print(msg)
 
-    tw = moduleTwitter.moduleTwitter()
-    tw.setClient("botElectrico")
-    res = tw.publishPost(msg,"","")
-    # print(res)
+    dsts = {'twitter':'botElectrico',
+            'telegram':'botElectrico',
+            'mastodon':'@botElectrico@botsin.space'}
+
+    for dst in dsts:
+        print(dst)
+        api = getApi(dst, dsts[dst])
+        print(api, dsts[dst])
+        res = api.publishPost(msg,"","")
+        print(res)
 
 
 if __name__ == "__main__":
