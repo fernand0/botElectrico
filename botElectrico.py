@@ -6,10 +6,8 @@ import json
 import keyring
 import logging
 import sys
-import time
 import requests
 
-import moduleTwitter
 from configMod import *
 
 
@@ -27,8 +25,8 @@ def convertToDatetime(myTime):
     now = datetime.datetime.now()
     date = datetime.datetime.date(now)
     converted = myTime
-    converted = datetime.datetime.strptime(f"{date} {converted}", 
-            "%Y-%m-%d %H:%M")
+    converted = datetime.datetime.strptime(f"{date} {converted}",
+                                           "%Y-%m-%d %H:%M")
 
     return converted
 
@@ -59,10 +57,6 @@ def main():
         f'&end_date={(now+delta).strftime("%Y-%m-%dT%H:%M")}'
         "&time_trunc=hour"
     )
-    # Authorization token is not needed.
-    # token = getPassword(apiBase, 'fernand0@elmundoesimperfecto.com')
-    # headers = {"Authorization": f'Token token="{token}"'}
-
     # https://pybonacci.org/2020/05/12/demanda-electrica-en-espana-durante-el-confinamiento-covid-19-visto-con-python/
     # https://api.esios.ree.es/
     # https://www.ree.es/es/apidatos
@@ -94,15 +88,8 @@ def main():
 
     franja = "valle"
     for hours in ranges:
-        # print(hours)
-        # start = ranges[hours][0]
-        # start = datetime.datetime.strptime(f"{date} {start}", "%Y-%m-%d %H:%M")
         start = convertToDatetime(ranges[hours][0])
         end = convertToDatetime(ranges[hours][1])
-        # print(start,end, now)
-        # print(start<=now)
-        # print(now<=end)
-        # print(now.weekday())
 
         if (now.weekday() <= 4) and ((start <= now) and (now < end)):
             tipoHora = hours
@@ -110,8 +97,6 @@ def main():
                 tipoHora = tipoHora[:-1]
             franja = tipoHora
             break
-        # else:
-        #     print(f"no {start} {end}")
 
     if franja == "valle":
         if now.weekday() <= 4:
