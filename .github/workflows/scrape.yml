@@ -4,11 +4,12 @@ name: Scrape daily data
 
 # Controls when the action will run. 
 on:
-  workflow_dispatch:
+  schedule:
+    - cron: '1 2 * * *'
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  build:
+  scheduled:
     runs-on: ubuntu-latest
     steps:
     - name: Check out this repo
