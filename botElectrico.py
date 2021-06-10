@@ -5,21 +5,12 @@ import getpass
 import json
 import keyring
 import logging
-import sys
 import requests
+import sys
 
 from configMod import *
 
-
-def getPassword(server, user):
-    # Para borrar keyring.delete_password(server, user)
-    password = keyring.get_password(server, user)
-    if not password:
-        logging.info("[%s,%s] New account. Setting password" % (server, user))
-        password = getpass.getpass()
-        keyring.set_password(server, user, password)
-    return password
-
+apiBase = "https://apidatos.ree.es/"
 
 def convertToDatetime(myTime):
     now = datetime.datetime.now()
@@ -30,18 +21,58 @@ def convertToDatetime(myTime):
 
     return converted
 
+def masBarato(hours): 
+    now = datetime.datetime.now()
+    urlPrecio = (
+        f"{apiBase}es/datos/mercados/precios-mercados-tiempo-real?"\
+        f'start_date={(now).strftime("%Y-%m-%dT00:00")}'\
+        f'&end_date={(now).strftime("%Y-%m-%dT23:59")}'\
+        f"&time_trunc=hour"
+    )
+    result = requests.get(urlPrecio)
+    data = json.loads(result.content)
+
+    startH = int(hours[0].split(':')[0])
+    endH = int(hours[1].split(':')[0])
+    if endH == '00':
+        endH = '24'
+
+    # print(data)
+    values = data["included"][0]["attributes"]["values"]
+
+    # print(startH, endH)
+    # for val in [values[start*8:(start+1)*8] for start in range(3)]:
+    maxV = 0
+    minV = 100000
+    for hour in values[startH: endH+1]:
+        print(hour)
+        print(f"{hour}")
+        if hour['value']>maxV:
+            maxV = hour['value']
+            hourMax = hour
+        if hour['value']<minV:
+            minV = hour['value']
+            hourMin = hour
+    print(f"Max {maxV} {hourMax['datetime']}")
+    print(f"Min {minV} {hourMin['datetime']}")
+    return(hourMin, hourMax)
 
 def main():
 
+    mode = None
+    if len(sys.argv) > 1:
+        if sys.argv[1] == '-t':
+            mode = 'test'
+
     ranges = {
-        "llana1": ["08:00", "10:00"],
+        "llano1": ["08:00", "10:00"],
         "punta1": ["10:00", "14:00"],
-        "llana2": ["14:00", "18:00"],
+        "llano2": ["14:00", "18:00"],
         "punta2": ["18:00", "22:00"],
-        "llana3": ["22:00", "23:59"],
+        "llano3": ["22:00", "23:59"],
     }
 
-    button = {"llana": "🟠", "valle": "🟢", "punta": "🔴"}
+    button = {"llano": "🟠", "valle": "🟢", "punta": "🔴"}
 
     logging.basicConfig(
         stream=sys.stdout, level=logging.INFO, format="%(asctime)s %(message)s"
@@ -50,7 +81,6 @@ def main():
     now = datetime.datetime.now()
     # print(f'{now.strftime("%Y-%m-%dT%H:%M")}')
     delta = datetime.timedelta(hours=1, minutes=00)
-    apiBase = "https://apidatos.ree.es/"
     urlPrecio = (
         f"{apiBase}es/datos/mercados/precios-mercados-tiempo-real?"
         f'start_date={(now-delta).strftime("%Y-%m-%dT%H:%M")}'
@@ -62,13 +92,8 @@ def main():
     # https://www.ree.es/es/apidatos
 
     ses = requests.Session()
-    # ses.headers.update(headers)
-    # print(ses.headers)
-    # print(ses.headers['Authorization'])
     result = ses.get(urlPrecio)
     data = json.loads(result.content)
-    # print(result.headers)
-    # return
 
     tipo = data["included"][0]["attributes"]["title"]
     precio = data["included"][0]["attributes"]["values"][0]["value"]
@@ -87,42 +112,81 @@ def main():
     mm = now.minute
 
     franja = "valle"
+    msgBase = f"Son las {hh:0>2}:{mm:0>2} "
+    luego = ''
+    empiezaTramo = False
     for hours in ranges:
         start = convertToDatetime(ranges[hours][0])
         end = convertToDatetime(ranges[hours][1])
 
         if (now.weekday() <= 4) and ((start <= now) and (now < end)):
+            if hours[-1].isdigit():
+                franja = hours[:-1]
+            else:
+                franja = hours
+
             tipoHora = hours
-            if tipoHora[-1].isdigit():
-                tipoHora = tipoHora[:-1]
-            franja = tipoHora
-            break
+
+            if now.hour == start.hour:
+                empiezaTramo = True
+                msgBase = f"{msgBase} y empieza el periodo {franja}"
+            else: 
+                empiezaTramo = False
+                msgBase = f"{msgBase} y estamos en periodo {franja}"
+
+            minData, maxData = masBarato(ranges[hours])
+            timeMin = int(minData['datetime'].split('T')[1][:2])
+            timeMax = int(maxData['datetime'].split('T')[1][:2])
+
 
     if franja == "valle":
         if now.weekday() <= 4:
-            msgFranja = "va desde las 00:00 hasta las 8:00"
+            msgFranja = "entre las 00:00 y las 8:00"
         else:
             msgFranja = "dura todo el fin de semana"
     else:
-        msgFranja = f"va desde {ranges[hours][0]} hasta {ranges[hours][1]}"
+        msgFranja = (f"entre las {ranges[tipoHora][0]} "
+                    f"y las {ranges[tipoHora][1]}")
 
     msgBase = (
-        f"Son las {hh:0>2}:{mm:0>2}  y estamos en hora {franja}."
-        f" Esta franja {msgFranja}"
-        f"\n     Precio: {precio:.3f} ({tipo})."
-        f"\n     En la hora siguiente el precio será: "
-        f"{precioSig:.3f}({sigSymbol})"
+        f"{msgBase}"
+        f"\n    Precio: {precio:.3f} {tipo}"
+        f"\n    En la hora siguiente el precio será: "
+        f"{precioSig:.3f}{sigSymbol}"
+        f"\nFranja {msgFranja}")
+
+    if empiezaTramo:
+        prizeMin = float(minData['value'])/1000
+        prizeMax = float(maxData['value'])/1000
+        msgBase = (
+        f"{msgBase}" 
+        f"\nHora más económica "
+        f"entre las {timeMin} y las {timeMin+1} ({prizeMin:.3f})"
+        f"\nLa más cara entre las {timeMax} y las {timeMax+1} ({prizeMax:.3f})"
+        #f" Luego baja."
     )
     msg = f"{button[franja]} {msgBase}"
     print(msg)
+    print(len(msg))
 
-    return
+    if len(msg)>280:
+        print("Muy largo")
+        return
 
-    dsts = {
-        "twitter": "botElectrico",
-        "telegram": "botElectrico",
-        "mastodon": "@botElectrico@botsin.space",
-    }
+    if mode == 'test':
+        dsts = {
+            "twitter": "fernand0Test",
+            "telegram": "testFernand0",
+            "facebook": "Fernand0Test",
+        }
+    else:
+        dsts = {
+            "twitter": "botElectrico",
+            "telegram": "botElectrico",
+            "mastodon": "@botElectrico@botsin.space",
+        }
+
+    print(dsts)
 
     for dst in dsts:
         print(dst)
