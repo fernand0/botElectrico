@@ -144,10 +144,10 @@ def main():
 
     now = datetime.datetime.now()
     # print(f'{now.strftime("%Y-%m-%dT%H:%M")}') now = "2021-06-10 14:17:30.993728"
-    now = convertToDatetime("00:01")
+    #now = convertToDatetime("00:01")
 
     data = getData(now)
-    graficaDia(data, now)
+    # graficaDia(data, now)
 
     pos = int(now.hour)
     tipo = data["included"][0]["attributes"]["title"]
@@ -190,10 +190,10 @@ def main():
 
             tipoHora = hours
 
-
             minData, maxData = masBarato(data, ranges[hours])
         elif now.weekday() > 4:
             minData, maxData = masBarato(data, ["00:00", "24:00"])
+
         if minData:
             timeMin = int(minData['datetime'].split('T')[1][:2])
             timeMax = int(maxData['datetime'].split('T')[1][:2])
@@ -203,7 +203,6 @@ def main():
                 msgBase = f"{msgBase} y empieza el periodo {franja}"
                 msgBase1 = "Empieza"
         else: 
-                empiezaTramo = False
                 msgBase = f"{msgBase} y estamos en periodo {franja}"
                 msgBase1 = "Estamos en"
         msgBase1 = f"{msgBase1} periodo {franja}"
