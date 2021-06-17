@@ -7,6 +7,7 @@ import keyring
 import logging
 import matplotlib.pyplot as plt
 import matplotlib.ticker
+import matplotlib.patches as patches
 import requests
 import sys
 
@@ -18,9 +19,9 @@ def nameFile(now):
     return f"/tmp/{now.year}-{now.month:0>2}-{now.day:0>2}"
 
 def getData(now):
-    print(now)
+    #print(now)
     name = f"{nameFile(now)}_data.json"
-    print(name)
+    logging.info(name)
     if os.path.exists(name): 
         logging.info("Cached")
         data=json.loads(open(name).read())
@@ -78,10 +79,14 @@ def graficaDia(data, now):
     # plt.text(0.3, .115, f'Min: {ymin:.3f} ({xmin}:00)')
     # plt.text(0, .114, f'Max: {ymax:.3f} ({xmax}:00)')
 
+    arrowprops = dict(arrowstyle='simple', linewidth='0.0001', color='paleturquoise')
+
     plt.annotate(f'Max: {ymax:.3f} ({xmax}:00)', xy=(xmax,ymax), 
-            xytext=(xmax-8,ymax), arrowprops=dict(arrowstyle='simple'))
+            # xytext=(xmax-8,ymax), arrowprops=dict(arrowstyle='simple'))
+            xytext=(0,ymax-2/1000), arrowprops=arrowprops)
     plt.annotate(f'Min: {ymin:.3f} ({xmin}:00)', xy=(xmin,ymin), 
-            xytext=(xmin-8,ymin-1/1000), arrowprops=dict(arrowstyle='simple'))
+            xytext=(0.5,ymax-10/1000), arrowprops=arrowprops)
+            # xytext=(xmin-8,ymin-1/1000), arrowprops=dict(arrowstyle='simple'))
     # plt.axhline(y=ymax, linestyle='dotted')
     # plt.axhline(y=ymin, linestyle='dotted')
     # plt.axvline(x=xmax, linestyle='dotted')
@@ -91,7 +96,7 @@ def graficaDia(data, now):
     #ax.annotate('local max', xy=(xmax, ymax), xytext=(xmax, ymax+5),
     #                    arrowprops=dict(facecolor='black', shrink=0.05),
     #                                )
-    plt.show()
+    #plt.show()
     name = f"{nameFile(now)}_image.png"
     plt.savefig(name)
 
@@ -109,7 +114,7 @@ def masBarato(data, hours):
     maxV = 0
     minV = 100000
     for hour in values[startH: endH]:
-        print(f"{hour}")
+        # print(f"{hour}")
         if hour['value']>maxV:
             maxV = hour['value']
             hourMax = hour
@@ -144,7 +149,7 @@ def main():
 
     now = datetime.datetime.now()
     # print(f'{now.strftime("%Y-%m-%dT%H:%M")}') now = "2021-06-10 14:17:30.993728"
-    #now = convertToDatetime("00:01")
+    # now = convertToDatetime("00:01")
 
     data = getData(now)
     # graficaDia(data, now)
@@ -179,8 +184,8 @@ def main():
     for hours in ranges:
         start = convertToDatetime(ranges[hours][0])
         end = convertToDatetime(ranges[hours][1])
-        print(f"{start}")
-        print(f"{end}")
+        # print(f"{start}")
+        # print(f"{end}")
 
         if (now.weekday() <= 4) and ((start <= now) and (now < end)):
             if hours[-1].isdigit():
