@@ -35,12 +35,37 @@ def getData(now):
             f'&end_date={(now).strftime("%Y-%m-%dT23:59")}'\
             f"&time_trunc=hour"
         )
-        result = requests.get(urlPrecio)
-        data = json.loads(result.content)
-        with open(name, 'w') as f:
-            json.dump(data, f)
+        data = None
+        while not data:
+            result = requests.get(urlPrecio)
+            data = json.loads(result.content)
+            if (('errors' not in data) and 
+                (data["included"][0]["attributes"]["title"].find('PVPC')>= 0)):
+                    # When the PVPC is not ready the API serves
+                    # "Precio mercado spot (\u20ac/MWh)", which 
+                    # is the prize paid to producers
+                    with open(name, 'w') as f:
+                        json.dump(data, f)
+            else:
+                data = None    
+            if not data:
+                print("Waiting to see if it is available later")
+                import time
+                time.sleep(300)
+
+
 
     return data
+
+def nextSymbol(prize, prizeNext):
+    if prizeNext > prize:
+        nextSymbol = "↗"
+    elif prizeNext < prize:
+        nextSymbol = "↘"
+    else:
+        nextSymbol = "↔"
+
+    return nextSymbol
 
 def convertToDatetime(myTime):
     now = datetime.datetime.now()
@@ -55,14 +80,19 @@ def convertToDatetime(myTime):
 
     return converted
 
-def graficaDia(data, now):
+def graficaDia(now, delta):
 
+    nowNext = now + datetime.timedelta(hours=delta)
+    data = getData(nowNext)
     # create data
     values=[val['value']/1000 
             for val in data["included"][0]["attributes"]["values"]]
 
-    plt.title(f"Evolución precio para el día {str(now).split(' ')[0]}")
+    plt.title(f"Evolución precio para el día {str(nowNext).split(' ')[0]}")
 
+    maxy = 0.275
+    miny = 0.010
+    plt.ylim((miny, maxy))
     plt.xlabel("Horas")
     plt.ylabel("Precio")
     plt.xticks(range(0, 23, 4))
@@ -76,29 +106,25 @@ def graficaDia(data, now):
     xpos = values.index(ymin)
     xmin = xpos
 
-    # plt.text(0.3, .115, f'Min: {ymin:.3f} ({xmin}:00)')
-    # plt.text(0, .114, f'Max: {ymax:.3f} ({xmax}:00)')
 
-    arrowprops = dict(arrowstyle='simple', linewidth='0.0001', color='paleturquoise')
+    arrowprops = dict(arrowstyle='simple', linewidth='0.0001', 
+            color='paleturquoise')
+
+    posMax = ymax - 2/1000
+    posMin = posMax - 10/1000
+    print (xmax)
+    if xmax < 8:
+        posMax = posMax - 10/1000
+        posMin = posMin - 10/1000
 
     plt.annotate(f'Max: {ymax:.3f} ({xmax}:00)', xy=(xmax,ymax), 
-            # xytext=(xmax-8,ymax), arrowprops=dict(arrowstyle='simple'))
-            xytext=(0,ymax-2/1000), arrowprops=arrowprops)
+            xytext=(0,posMax), arrowprops=arrowprops)
     plt.annotate(f'Min: {ymin:.3f} ({xmin}:00)', xy=(xmin,ymin), 
-            xytext=(0.5,ymax-10/1000), arrowprops=arrowprops)
-            # xytext=(xmin-8,ymin-1/1000), arrowprops=dict(arrowstyle='simple'))
-    # plt.axhline(y=ymax, linestyle='dotted')
-    # plt.axhline(y=ymin, linestyle='dotted')
-    # plt.axvline(x=xmax, linestyle='dotted')
-    # plt.axvline(x=xmin, linestyle='dotted')
-    # use the plot function
+            xytext=(0.5, posMin), arrowprops=arrowprops)
     plt.plot(values)
-    #ax.annotate('local max', xy=(xmax, ymax), xytext=(xmax, ymax+5),
-    #                    arrowprops=dict(facecolor='black', shrink=0.05),
-    #                                )
-    #plt.show()
-    name = f"{nameFile(now)}_image.png"
+    name = f"{nameFile(nowNext)}_image.png"
     plt.savefig(name)
+    return name
 
 def masBarato(data, hours): 
     startH = int(hours[0].split(':')[0])
@@ -106,10 +132,10 @@ def masBarato(data, hours):
     if endH == '00':
         endH = '24'
 
+    print(f"start: {startH}, {endH}")
     # print(data)
     values = data["included"][0]["attributes"]["values"]
 
-    # print(startH, endH)
     # for val in [values[start*8:(start+1)*8] for start in range(3)]:
     maxV = 0
     minV = 100000
@@ -138,7 +164,7 @@ def main():
         "llano2": ["14:00", "18:00"],
         "punta2": ["18:00", "22:00"],
         "llano3": ["22:00", "24:00"],
-        "valle": ["00:00", "8:00"]
+        "valle":  ["00:00", "8:00"]
     }
 
     button = {"llano": "🟠", "valle": "🟢", "punta": "🔴"}
@@ -148,79 +174,75 @@ def main():
     )
 
     now = datetime.datetime.now()
-    # print(f'{now.strftime("%Y-%m-%dT%H:%M")}') now = "2021-06-10 14:17:30.993728"
-    # now = convertToDatetime("00:01")
 
-    data = getData(now)
-    # graficaDia(data, now)
+    # now = convertToDatetime("21:00")
+    # print(now)
 
-    pos = int(now.hour)
-    tipo = data["included"][0]["attributes"]["title"]
-    precio = data["included"][0]["attributes"]["values"][pos]["value"]
-    if pos < 23:
-        precioSig = data["included"][0]["attributes"]["values"][pos+1]["value"]
-    else:
-        nowSig = now + datetime.timedelta(hours=1)
-        dataSig = getData(nowSig)
-        precioSig = dataSig["included"][0]["attributes"]["values"][0]["value"]
-    precio = float(precio) / 1000
-    precioSig = float(precioSig) / 1000
-    tipo = tipo.replace("M", "k")
-    if precioSig > precio:
-        sigSymbol = "↗"
-    elif precioSig < precio:
-        sigSymbol = "↘"
-    else:
-        sigSymbol = "↔"
-
+    dd = now.weekday()
     hh = now.hour
     mm = now.minute
 
+    data = getData(now)
+    # Trying to catch errors in obtaining data
+
+    pos = int(hh)
+    tipo = data["included"][0]["attributes"]["title"]
+    tipo = tipo.replace("M", "k")
+
+    precio = data["included"][0]["attributes"]["values"][pos]["value"]
+
+    if pos < 23:
+        prizeNext = data["included"][0]["attributes"]["values"][pos+1]["value"]
+    else:
+        nextDay = now + datetime.timedelta(hours=1)
+        dataNext = getData(nextDay)
+
+        prizeNext = dataNext["included"][0]["attributes"]["values"][0]["value"]
+
+    prize = float(precio) / 1000
+    prizeNext = float(prizeNext) / 1000
+
     franja = "valle"
-    msgBase = f"Son las {hh:0>2}:{mm:0>2} "
     luego = ''
     empiezaTramo = False
     minData = None
-    for hours in ranges:
-        start = convertToDatetime(ranges[hours][0])
-        end = convertToDatetime(ranges[hours][1])
-        # print(f"{start}")
-        # print(f"{end}")
 
-        if (now.weekday() <= 4) and ((start <= now) and (now < end)):
-            if hours[-1].isdigit():
-                franja = hours[:-1]
-            else:
-                franja = hours
+    if dd > 4:
+        hours = ["00:00", "24:00"]
+        minData, maxData = masBarato(data, hours)
+        start = convertToDatetime(hours[0])
+        end = convertToDatetime(hours[1])
+    else:
+        for hours in ranges:
+            start = convertToDatetime(ranges[hours][0])
+            end = convertToDatetime(ranges[hours][1])
 
-            tipoHora = hours
+            if ((start <= now) and (now < end)):
+                if hours[-1].isdigit():
+                    # llano1, punta1, ....
+                    franja = hours[:-1]
 
-            minData, maxData = masBarato(data, ranges[hours])
-        elif now.weekday() > 4:
-            minData, maxData = masBarato(data, ["00:00", "24:00"])
+                tipoHora = hours
+                minData, maxData = masBarato(data, ranges[hours])
+                break
 
-        if minData:
-            timeMin = int(minData['datetime'].split('T')[1][:2])
-            timeMax = int(maxData['datetime'].split('T')[1][:2])
+    if minData:
+        timeMin = int(minData['datetime'].split('T')[1][:2])
+        timeMax = int(maxData['datetime'].split('T')[1][:2])
 
-        if now.hour == start.hour:
-                empiezaTramo = True
-                msgBase = f"{msgBase} y empieza el periodo {franja}"
-                msgBase1 = "Empieza"
-        else: 
-                msgBase = f"{msgBase} y estamos en periodo {franja}"
-                msgBase1 = "Estamos en"
-        msgBase1 = f"{msgBase1} periodo {franja}"
+    if hh == start.hour:
+        empiezaTramo = True
+        msgBase1 = "Empieza"
+    else: 
+        msgBase1 = "Estamos en"
+    msgBase1 = f"{msgBase1} periodo {franja}"
 
-
-    if now.hour == 0:
-        graficaDia(data,now)
-    # print(now)
-    # print(now.hour)
-    # return
+    timeGraph = 21
+    if hh == timeGraph:
+        nameGraph = graficaDia(now, 24 - timeGraph)
 
     if franja == "valle":
-        if now.weekday() <= 4:
+        if dd <= 4:
             msgFranja = "(entre las 00:00 y las 8:00)"
         else:
             msgFranja = "(todo el día)"
@@ -231,14 +253,10 @@ def main():
     msgBase1 = f"{msgBase1} {msgFranja}. Precios {tipo}"
 
     msgPrecio = (
-        f"\nEn esta hora: {precio:.3f}"# {tipo}"
-        f"\nEn la hora siguiente: {precioSig:.3f}{sigSymbol}"
+        f"\nEn esta hora: {prize:.3f}"# {tipo}"
+        f"\nEn la hora siguiente: "
+        f"{prizeNext:.3f}{nextSymbol(prize, prizeNext)}"
         )
-
-    msgBase = (
-        f"{msgBase}"
-        f"{msgPrecio}"
-        f"\nFranja {msgFranja}")
 
     if empiezaTramo:
         prizeMin = float(minData['value'])/1000
@@ -251,16 +269,12 @@ def main():
                 #f"\nHora más cara entre las {timeMax} y las {timeMax+1}: "
                 #f"{prizeMax:.3f}"
                 )
-        msgBase = f"{msgBase}{msgMaxMin}" 
         msgBase1 = f"{msgBase1}{msgMaxMin}" 
         #f" Luego baja."
-    msg = f"{button[franja]} {msgBase}"
     msgBase1 = (
             f"{button[franja]} {msgBase1}"
             f"{msgPrecio}"
             )
-    print(msg)
-    print(len(msg))
     print(msgBase1)
     print(len(msgBase1))
     msg = msgBase1
@@ -280,6 +294,7 @@ def main():
             "twitter": "botElectrico",
             "telegram": "botElectrico",
             "mastodon": "@botElectrico@botsin.space",
+            "facebook": "BotElectrico",
         }
 
     print(dsts)
@@ -291,10 +306,10 @@ def main():
         res = api.publishPost(msg, "", "")
         print(res)
 
-        if now.hour == 0: 
+        if now.hour == timeGraph: 
             res = api.publishImage(f"Evolución precio para el día "\
-                                   f"{str(now).split(' ')[0]}", 
-                                   f"{nameFile(now)}_image.png"
+                                   f"{str(now + datetime.timedelta(days=1)).split(' ')[0]}", 
+                                   f"{nameGraph}"
                                   )
         print(res)
 
