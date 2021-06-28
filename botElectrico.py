@@ -105,14 +105,14 @@ def graficaDia(now, delta):
     ymin = min(values)
     xpos = values.index(ymin)
     xmin = xpos
-
+    maxDay = (xmax, ymax)
+    minDay = (xmin, ymin)
 
     arrowprops = dict(arrowstyle='simple', linewidth='0.0001', 
             color='paleturquoise')
 
     posMax = ymax - 2/1000
     posMin = posMax - 10/1000
-    print (xmax)
     if xmax < 8:
         posMax = posMax - 10/1000
         posMin = posMin - 10/1000
@@ -124,7 +124,7 @@ def graficaDia(now, delta):
     plt.plot(values)
     name = f"{nameFile(nowNext)}_image.png"
     plt.savefig(name)
-    return name
+    return name, minDay, maxDay
 
 def masBarato(data, hours): 
     startH = int(hours[0].split(':')[0])
@@ -175,7 +175,8 @@ def main():
 
     now = datetime.datetime.now()
 
-    # now = convertToDatetime("21:00")
+    if mode == 'test':
+        now = convertToDatetime("21:00")
     # print(now)
 
     dd = now.weekday()
@@ -237,9 +238,9 @@ def main():
         msgBase1 = "Estamos en"
     msgBase1 = f"{msgBase1} periodo {franja}"
 
-    timeGraph = 21
+    timeGraph = 21 
     if hh == timeGraph:
-        nameGraph = graficaDia(now, 24 - timeGraph)
+        nameGraph, minDay, maxDay = graficaDia(now, 24 - timeGraph)
 
     if franja == "valle":
         if dd <= 4:
@@ -307,10 +308,12 @@ def main():
         print(res)
 
         if now.hour == timeGraph: 
-            res = api.publishImage(f"Evolución precio para el día "\
-                                   f"{str(now + datetime.timedelta(days=1)).split(' ')[0]}", 
-                                   f"{nameGraph}"
-                                  )
+            dateS = str(now + datetime.timedelta(days=1)).split(' ')[0]
+            msgImage = f"Evolución precio para el día {dateS}"
+            msgAlt = (f"{msgImage}. Mínimo a las {minDay[0]} ({minDay[1]}. "
+                      f"Máximo a las {maxDay[0]} ({maxDay[1]}. "
+                      )
+            res = api.publishImage(msgImage, nameGraph, alt=msgAlt)
         print(res)
 
 
