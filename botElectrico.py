@@ -3,7 +3,6 @@
 import datetime
 import getpass
 import json
-import keyring
 import logging
 import matplotlib.pyplot as plt
 import matplotlib.ticker
@@ -11,7 +10,7 @@ import matplotlib.patches as patches
 import requests
 import sys
 
-from configMod import *
+from socialModules.configMod import *
 
 apiBase = "https://apidatos.ree.es/"
 
@@ -108,8 +107,9 @@ def graficaDia(now, delta):
     maxDay = (xmax, ymax)
     minDay = (xmin, ymin)
 
-    arrowprops = dict(arrowstyle='simple', linewidth='0.0001', 
+    arrowprops = dict(arrowstyle='simple', linewidth=0.0001, 
             color='paleturquoise')
+    # linewidth cannot be a string ?
 
     posMax = ymax - 2/1000
     posMin = posMax - 10/1000
