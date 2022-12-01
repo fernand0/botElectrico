@@ -91,7 +91,9 @@ def graficaDia(now, delta):
 
     maxy = 0.275
     miny = 0.010
-    plt.ylim((miny, maxy))
+    ymax = max(values)
+    ymin = min(values)
+    plt.ylim((ymin-0.10, ymax+0.10))
     plt.xlabel("Horas")
     plt.ylabel("Precio")
     plt.xticks(range(0, 23, 4))
@@ -241,6 +243,8 @@ def main():
     timeGraph = 21 
     if hh == timeGraph:
         nameGraph, minDay, maxDay = graficaDia(now, 24 - timeGraph)
+
+    return
 
     if franja == "valle":
         if dd <= 4:
