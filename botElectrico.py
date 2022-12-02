@@ -244,7 +244,6 @@ def main():
     if hh == timeGraph:
         nameGraph, minDay, maxDay = graficaDia(now, 24 - timeGraph)
 
-    return
 
     if franja == "valle":
         if dd <= 4:
