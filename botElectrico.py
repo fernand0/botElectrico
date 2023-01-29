@@ -14,6 +14,8 @@ from socialModules.configMod import *
 
 apiBase = "https://apidatos.ree.es/"
 
+clock = ['🕛', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚']
+
 def nameFile(now):
     return f"/tmp/{now.year}-{now.month:0>2}-{now.day:0>2}"
 
@@ -52,8 +54,6 @@ def getData(now):
                 import time
                 time.sleep(300)
 
-
-
     return data
 
 def nextSymbol(prize, prizeNext):
@@ -78,6 +78,44 @@ def convertToDatetime(myTime):
                                            "%Y-%m-%d %H:%M")
 
     return converted
+
+def makeTable(values):
+    hh = 0
+    text = "<table>"
+    col1 = "<th>Hora</th><th>Precio</th>"
+    col2 = "<th>Hora</th><th>Precio</th>"
+    col3 = "<th>Hora</th><th>Precio</th>"
+    text = f"{text}<tr>{col1}{col2}{col3}</tr>"
+    textList = "<ul>"
+    textList2 = "</br>"
+    textList2 = f"{textList2} ----------------------------------------</br> "
+    for i, val in enumerate(values):
+        if i - 1 >= 0:
+            prevVal = values[i-1]
+        else:
+            prevVal = 1000 #FIXME
+        textList = f"{textList}\n<li><strong>{hh:02}:00</strong> - {val:.3f}</li>"
+        textList2 = f"{textList2}| {clock[hh % 12]} {nextSymbol(val, prevVal)} {val:.3f}"
+        if (hh % 3 == 0):
+            col1 = f"<td>{hh:02}:00</td><td>{val:.3f}</td>"
+        elif (hh % 3 == 1):
+            col2 = f"<td>{hh:02}:00</td><td>{val:.3f}</td>"
+        elif (hh % 3 == 2):
+            col3 = f"<td>{hh:02}:00</td><td>{val:.3f}</td>"
+            line = f"<tr>{col1}{col2}{col3}</tr>"
+            text = f"{text}{line}"
+        if (hh % 4 == 3):
+            textList2 = f"{textList2} | </br>"
+        hh = hh + 1
+    text = f"{text}</table>"
+    textList = f"{textList}\n</ul>\ "
+    textList2 = f"{textList2} ----------------------------------------</br> "
+
+    print(f"Table: {text}")
+    print(f"List: {textList}")
+    print(f"New Table: {textList2}")
+
+    return textList2
 
 def graficaDia(now, delta):
 
@@ -126,7 +164,7 @@ def graficaDia(now, delta):
     plt.plot(values)
     name = f"{nameFile(nowNext)}_image.png"
     plt.savefig(name)
-    return name, minDay, maxDay
+    return name, minDay, maxDay, values
 
 def masBarato(data, hours): 
     startH = int(hours[0].split(':')[0])
@@ -172,7 +210,8 @@ def main():
     button = {"llano": "🟠", "valle": "🟢", "punta": "🔴"}
 
     logging.basicConfig(
-        stream=sys.stdout, level=logging.INFO, format="%(asctime)s %(message)s"
+        stream=sys.stdout, level=logging.DEBUG, 
+        format="%(asctime)s %(message)s"
     )
 
     now = datetime.datetime.now()
@@ -242,7 +281,8 @@ def main():
 
     timeGraph = 21 
     if hh == timeGraph:
-        nameGraph, minDay, maxDay = graficaDia(now, 24 - timeGraph)
+        nameGraph, minDay, maxDay, values = graficaDia(now, 24 - timeGraph)
+        table = makeTable(values)
 
 
     if franja == "valle":
@@ -299,6 +339,7 @@ def main():
             "telegram": "botElectrico",
             "mastodon": "@botElectrico@botsin.space",
             "facebook": "BotElectrico",
+            "medium": "botElectrico"
         }
 
     print(dsts)
@@ -307,16 +348,23 @@ def main():
         print(dst)
         api = getApi(dst, dsts[dst])
         print(api, dsts[dst])
-        res = api.publishPost(msg, "", "")
-        print(res)
 
         if now.hour == timeGraph: 
             dateS = str(now + datetime.timedelta(days=1)).split(' ')[0]
-            msgImage = f"Evolución precio para el día {dateS}"
-            msgAlt = (f"{msgImage}. Mínimo a las {minDay[0]} ({minDay[1]}. "
-                      f"Máximo a las {maxDay[0]} ({maxDay[1]}. "
-                      )
-            res = api.publishImage(msgImage, nameGraph, alt=msgAlt)
+            msgTitle = f"Evolución precio para el día {dateS}"
+            msgMin = (f"Mínimo a las {minDay[0]} ({minDay[1]:.3f}). ")
+            msgMax = (f"Máximo a las {maxDay[0]} ({maxDay[1]:.3f}). ")
+            msgAlt = (f"{msgTitle}. {msgMin}\n{msgMax}")
+            msgMedium = (f"{msgTitle}\n</br>{msgMin}</br>{msgMax}</br>"
+                         f"\n<p>\n{table}\n</p>\n")
+            if dst == 'medium':
+                res = api.publishImage(msgMedium, nameGraph, alt=msgAlt)
+            else:
+                res = api.publishImage(msgTitle, nameGraph, alt=msgAlt)
+        if dst != 'medium':
+            res = api.publishPost(msg, "", "")
+            print(res)
+
         print(res)
 
 
