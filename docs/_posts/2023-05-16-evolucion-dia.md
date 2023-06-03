@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Evolución precio para el día 2023–05–15"
+title:  "Evolución precio para el día 2023–05–16"
 date:   2023-05-16 19:00:59 +0200
 categories: jekyll update
 ---
