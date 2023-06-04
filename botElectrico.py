@@ -14,7 +14,8 @@ from socialModules.configMod import *
 
 apiBase = "https://apidatos.ree.es/"
 
-clock = ['🕛', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚']
+clock = ['🕛', '🕐', '🕑', '🕒', '🕓', '🕔', 
+         '🕕', '🕖', '🕗', '🕘', '🕙', '🕚']
 
 def nameFile(now):
     return f"/tmp/{now.year}-{now.month:0>2}-{now.day:0>2}"
