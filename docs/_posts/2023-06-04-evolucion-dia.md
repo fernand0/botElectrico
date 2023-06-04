@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  'Evolución precio para el día 2023-06-05'
-date:   2023-06-05 09:00:59 +0200
+date:   2023-06-04 09:00:59 +0200
 categories: jekyll update
 ---
 Mínimo a las 11 (0.054). Máximo a las 22 (0.138).
