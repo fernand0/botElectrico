@@ -355,6 +355,7 @@ def main():
         print(api, dsts[dst])
 
         if now.hour == timeGraph:
+            dateP = str(now).split(' ')[0]
             dateS = str(now + datetime.timedelta(days=1)).split(' ')[0]
             msgTitle = f"Evolución precio para el día {dateS}"
             msgMin = (f"Mínimo a las {minDay[0]} ({minDay[1]:.3f}). ")
@@ -363,7 +364,7 @@ def main():
             msgTitle2 = (f"---\n"
                          "layout: post\n"
                         f"title:  '{msgTitle}'\n"
-                        f"date:   {dateS} 21:00:59 +0200\n"
+                        f"date:   {dateP} 21:00:59 +0200\n"
                         "categories: jekyll update\n"
                         "---")
             msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n"
