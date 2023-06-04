@@ -23,7 +23,7 @@ def getData(now):
     #print(now)
     name = f"{nameFile(now)}_data.json"
     logging.info(name)
-    if os.path.exists(name): 
+    if os.path.exists(name):
         logging.info("Cached")
         data=json.loads(open(name).read())
     else:
@@ -39,19 +39,21 @@ def getData(now):
             f'&end_date={(now).strftime("%Y-%m-%dT23:59")}'\
             f"&time_trunc=hour"
         )
+        urlPrecio = "https://api.esios.ree.es/archives/70/download_json"
         data = None
         while not data:
             result = requests.get(urlPrecio)
             data = json.loads(result.content)
-            if (('errors' not in data) and 
-                (data["included"][0]["attributes"]["title"].find('PVPC')>= 0)):
+            if (('errors' not in data) and
+                ('PVPC' in data)):
+                # (data["included"][0]["attributes"]["title"].find('PVPC')>= 0)):
                     # When the PVPC is not ready the API serves
-                    # "Precio mercado spot (\u20ac/MWh)", which 
+                    # "Precio mercado spot (\u20ac/MWh)", which
                     # is the prize paid to producers
                     with open(name, 'w') as f:
                         json.dump(data, f)
             else:
-                data = None    
+                data = None
             if not data:
                 logging.info("Waiting to see if it is available later")
                 import time
@@ -85,47 +87,34 @@ def convertToDatetime(myTime):
 def makeTable(values):
     hh = 0
     # text = "<table>"
-    col1 = "|Hora|Precio"
-    col2 = "|Hora|Precio"
-    col3 = "|Hora|Precio"
-    text = f"{col1}{col2}{col3}|\n"
-    textList = ""
-    textList2 = ""
+    text = ""
     for i, val in enumerate(values):
         if i - 1 >= 0:
             prevVal = values[i-1]
         else:
             prevVal = 1000 #FIXME
-        textList = f"{textList}\n|<strong>{hh:02}:00</strong> - {val:.3f}|"
-        textList2 = f"{textList2}| {clock[hh % 12]} {nextSymbol(val, prevVal)} {val:.3f}"
-        if (hh % 3 == 0):
-            col1 = f"|{hh:02}:00|{val:.3f}|"
-        elif (hh % 3 == 1):
-            col2 = f"|{hh:02}:00|{val:.3f}|"
-        elif (hh % 3 == 2):
-            col3 = f"|{hh:02}:00|{val:.3f}|"
-            line = f"{col1}{col2}{col3}"
-            text = f"{text}{line}"
+        text = (f"{text}| {clock[hh % 12]} "
+                f"{nextSymbol(val, prevVal)} {val:.3f}"
+                f" ({hh:02}:00)")
         if (hh % 4 == 3):
-            textList2 = f"{textList2} | \n"
+            text = f"{text} | \n"
         hh = hh + 1
-    text = f"{text}"
-    textList = f"{textList}\n"
-    textList2 = f"{textList2} \n"
+    text = f"{text} \n"
 
-    print(f"Table: {text}")
-    print(f"List: {textList}")
-    print(f"New Table: {textList2}")
+    print(f"New Table: \n{text}")
 
-    return textList2
+    return text
 
 def graficaDia(now, delta):
 
     nowNext = now + datetime.timedelta(hours=delta)
     data = getData(nowNext)
     # create data
-    values=[val['value']/1000 
-            for val in data["included"][0]["attributes"]["values"]]
+    values=[float(val['PCB'].replace(',','.'))/1000
+            for val in data["PVPC"]]
+            #for val in data["included"][0]["attributes"]["values"]]
+
+    logging.info(values)
 
     plt.title(f"Evolución precio para el día {str(nowNext).split(' ')[0]}")
 
@@ -149,7 +138,7 @@ def graficaDia(now, delta):
     maxDay = (xmax, ymax)
     minDay = (xmin, ymin)
 
-    arrowprops = dict(arrowstyle='simple', linewidth=0.0001, 
+    arrowprops = dict(arrowstyle='simple', linewidth=0.0001,
             color='paleturquoise')
     # linewidth cannot be a string ?
 
@@ -159,16 +148,16 @@ def graficaDia(now, delta):
         posMax = posMax - 10/1000
         posMin = posMin - 10/1000
 
-    plt.annotate(f'Max: {ymax:.3f} ({xmax}:00)', xy=(xmax,ymax), 
+    plt.annotate(f'Max: {ymax:.3f} ({xmax}:00)', xy=(xmax,ymax),
             xytext=(0,posMax), arrowprops=arrowprops)
-    plt.annotate(f'Min: {ymin:.3f} ({xmin}:00)', xy=(xmin,ymin), 
+    plt.annotate(f'Min: {ymin:.3f} ({xmin}:00)', xy=(xmin,ymin),
             xytext=(0.5, posMin), arrowprops=arrowprops)
     plt.plot(values)
     name = f"{nameFile(nowNext)}_image.png"
     plt.savefig(name)
     return name, minDay, maxDay, values
 
-def masBarato(data, hours): 
+def masBarato(data, hours):
     startH = int(hours[0].split(':')[0])
     endH = int(hours[1].split(':')[0])
     if endH == '00':
@@ -212,7 +201,7 @@ def main():
     button = {"llano": "🟠", "valle": "🟢", "punta": "🔴"}
 
     logging.basicConfig(
-            stream=sys.stdout, level=logging.DEBUG, 
+            stream=sys.stdout, level=logging.DEBUG,
             format="%(asctime)s %(message)s"
             )
 
@@ -277,11 +266,11 @@ def main():
     if hh == start.hour:
         empiezaTramo = True
         msgBase1 = "Empieza"
-    else: 
+    else:
         msgBase1 = "Estamos en"
     msgBase1 = f"{msgBase1} periodo {franja}"
 
-    timeGraph = 21 
+    timeGraph = 21
     if hh == timeGraph:
         nameGraph, minDay, maxDay, values = graficaDia(now, 24 - timeGraph)
         table = makeTable(values)
@@ -307,15 +296,15 @@ def main():
     if empiezaTramo:
         prizeMin = float(minData['value'])/1000
         prizeMax = float(maxData['value'])/1000
-        msgMaxMin = ( 
+        msgMaxMin = (
                      f"\nMín: {prizeMin:.3f}, entre las {timeMin} y "
-                     f"las {timeMin+1} (hora más económica)" 
+                     f"las {timeMin+1} (hora más económica)"
                      f"\nMáx: {prizeMax:.3f}, entre las {timeMax} y "
-                     f"las {timeMax+1} (hora más cara)" 
+                     f"las {timeMax+1} (hora más cara)"
                      #f"\nHora más cara entre las {timeMax} y las {timeMax+1}: "
                      #f"{prizeMax:.3f}"
                      )
-        msgBase1 = f"{msgBase1}{msgMaxMin}" 
+        msgBase1 = f"{msgBase1}{msgMaxMin}"
         #f" Luego baja."
     msgBase1 = (
             f"{button[franja]} {msgBase1}"
@@ -351,21 +340,21 @@ def main():
         api = getApi(dst, dsts[dst])
         print(api, dsts[dst])
 
-        if now.hour == timeGraph: 
+        if now.hour == timeGraph:
             dateS = str(now + datetime.timedelta(days=1)).split(' ')[0]
             msgTitle = f"Evolución precio para el día {dateS}"
             msgMin = (f"Mínimo a las {minDay[0]} ({minDay[1]:.3f}). ")
             msgMax = (f"Máximo a las {maxDay[0]} ({maxDay[1]:.3f}). ")
             msgAlt = (f"{msgTitle}. {msgMin}\n{msgMax}")
-            msgTitle = (f"---\n", 
-                         "layout: post\n", 
-                        f"title:  '{msgTitle}\n", 
-                        f"date:   {dateS} 21:00:59 +0200\n", 
-                        "categories: jekyll update\n", 
+            msgTitle = (f"---\n"
+                         "layout: post\n"
+                        f"title:  '{msgTitle}'\n"
+                        f"date:   {dateS} 21:00:59 +0200\n"
+                        "categories: jekyll update\n"
                         "---")
-            msgMedium = (f"{msgTitle}\n</br>{msgMin}</br>{msgMax}</br>"
-                         f"\n<p>\n{table}\n</p>\n")
-            with open(nameFile(now, 'w')) as f:
+            msgMedium = (f"{msgTitle}\n{msgMin}{msgMax}\n"
+                         f"\n{table}\n")
+            with open(nameFile(now), 'w') as f:
                       f.write(msgMedium)
             if dst == 'medium':
                 res = api.publishImage(msgMedium, nameGraph, alt=msgAlt)
