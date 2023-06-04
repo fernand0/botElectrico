@@ -360,13 +360,15 @@ def main():
             msgMin = (f"Mínimo a las {minDay[0]} ({minDay[1]:.3f}). ")
             msgMax = (f"Máximo a las {maxDay[0]} ({maxDay[1]:.3f}). ")
             msgAlt = (f"{msgTitle}. {msgMin}\n{msgMax}")
-            msgTitle = (f"---\n"
+            msgTitle2 = (f"---\n"
                          "layout: post\n"
                         f"title:  '{msgTitle}'\n"
                         f"date:   {dateS} 21:00:59 +0200\n"
                         "categories: jekyll update\n"
                         "---")
-            msgMedium = (f"{msgTitle}\n{msgMin}{msgMax}\n"
+            msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n"
+                         f"\n{table}\n")
+            msgTitle = (f"{msgTitle}\n{msgMin}{msgMax}\n"
                          f"\n{table}\n")
             with open(f"{nameFile(now)}_post.md", 'w') as f:
                       f.write(msgMedium)
