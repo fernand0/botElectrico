@@ -308,8 +308,8 @@ def main():
             )
 
     if empiezaTramo:
-        prizeMin = float(minData[1])/1000
-        prizeMax = float(maxData[1])/1000
+        prizeMin = minData[1]
+        prizeMax = maxData[1]
         msgMaxMin = (
                      f"\nMín: {prizeMin:.3f}, entre las {timeMin} y "
                      f"las {timeMin+1} (hora más económica)"
