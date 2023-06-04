@@ -370,7 +370,7 @@ def main():
                          f"\n{table}\n")
             msgTitle = (f"{msgTitle}\n{msgMin}{msgMax}\n"
                          f"\n{table}\n")
-            with open(f"{nameFile(now)}_post.md", 'w') as f:
+            with open(f"{nameFile(now)}-post.md", 'w') as f:
                       f.write(msgMedium)
             if dst == 'medium':
                 res = api.publishImage(msgMedium, nameGraph, alt=msgAlt)
