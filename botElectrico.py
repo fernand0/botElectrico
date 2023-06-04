@@ -27,6 +27,7 @@ def getData(now):
         logging.info("Cached")
         data=json.loads(open(name).read())
     else:
+        logging.info("Downloading")
         # https://pybonacci.org/2020/05/12/demanda-electrica-en-espana-durante-el-confinamiento-covid-19-visto-con-python/
         # https://api.esios.ree.es/
         # https://www.ree.es/es/apidatos
@@ -165,29 +166,38 @@ def masBarato(data, hours):
 
     print(f"start: {startH}, {endH}")
     # print(data)
-    values = data["included"][0]["attributes"]["values"]
+    values=[float(val['PCB'].replace(',','.'))/1000
+            for val in data["PVPC"]]
+    #values = data["included"][0]["attributes"]["values"]
 
     # for val in [values[start*8:(start+1)*8] for start in range(3)]:
+    maxI = 0
     maxV = 0
+    minI = 0
     minV = 100000
-    for hour in values[startH: endH]:
-        # print(f"{hour}")
-        if hour['value']>maxV:
-            maxV = hour['value']
+    for i,hour in enumerate(values[startH: endH]):
+        print(f"{hour}")
+        if hour>maxV:
+            maxV = hour
+            maxI = i
             hourMax = hour
-        if hour['value']<minV:
-            minV = hour['value']
+        if hour<minV:
+            minV = hour
+            minI = i
             hourMin = hour
-    print(f"Max {maxV} {hourMax['datetime']}")
-    print(f"Min {minV} {hourMin['datetime']}")
-    return(hourMin, hourMax)
+    print(f"Max {maxV} {startH+maxI}")
+    print(f"Min {minV} {startH+minI}")
+    return((minI, hourMin), (maxI, hourMax))
 
 def main():
 
     mode = None
+    now = None
     if len(sys.argv) > 1:
         if sys.argv[1] == '-t':
             mode = 'test'
+            if (len(sys.argv) > 2):
+                now = convertToDatetime(sys.argv[2])
 
     ranges = {
             "llano1": ["08:00", "10:00"],
@@ -205,10 +215,11 @@ def main():
             format="%(asctime)s %(message)s"
             )
 
-    now = datetime.datetime.now()
-
     if mode == 'test':
-        now = convertToDatetime("21:00")
+        if not now:
+            now = convertToDatetime("21:00")
+    elif not now:
+        now = datetime.datetime.now()
     # print(now)
 
     dd = now.weekday()
@@ -219,21 +230,23 @@ def main():
     # Trying to catch errors in obtaining data
 
     pos = int(hh)
-    tipo = data["included"][0]["attributes"]["title"]
-    tipo = tipo.replace("M", "k")
+    logging.info(f"Position: {pos}")
+    # tipo = data["included"][0]["attributes"]["title"]
+    # tipo = tipo.replace("M", "k")
 
-    precio = data["included"][0]["attributes"]["values"][pos]["value"]
+    precio = data["PVPC"][pos]["PCB"]
+
 
     if pos < 23:
-        prizeNext = data["included"][0]["attributes"]["values"][pos+1]["value"]
+        prizeNext = data["PVPC"][pos + 1]["PCB"]
     else:
         nextDay = now + datetime.timedelta(hours=1)
         dataNext = getData(nextDay)
 
-        prizeNext = dataNext["included"][0]["attributes"]["values"][0]["value"]
+        prizeNext = data["PVPC"][0]["PCB"]
 
-    prize = float(precio) / 1000
-    prizeNext = float(prizeNext) / 1000
+    prize = float(precio.replace(',','.')) / 1000
+    prizeNext = float(prizeNext.replace(',','.')) / 1000
 
     franja = "valle"
     luego = ''
@@ -260,8 +273,9 @@ def main():
                 break
 
     if minData:
-        timeMin = int(minData['datetime'].split('T')[1][:2])
-        timeMax = int(maxData['datetime'].split('T')[1][:2])
+        print(f"minData: {minData}")
+        timeMin = minData[0]
+        timeMax = maxData[0]
 
     if hh == start.hour:
         empiezaTramo = True
@@ -285,7 +299,7 @@ def main():
         msgFranja = (f"(entre las {ranges[tipoHora][0]} "
                      f"y las {ranges[tipoHora][1]})")
 
-    msgBase1 = f"{msgBase1} {msgFranja}. Precios {tipo}"
+    msgBase1 = f"{msgBase1} {msgFranja}. Precios PVPC"
 
     msgPrecio = (
             f"\nEn esta hora: {prize:.3f}"# {tipo}"
@@ -294,8 +308,8 @@ def main():
             )
 
     if empiezaTramo:
-        prizeMin = float(minData['value'])/1000
-        prizeMax = float(maxData['value'])/1000
+        prizeMin = float(minData[1])/1000
+        prizeMax = float(maxData[1])/1000
         msgMaxMin = (
                      f"\nMín: {prizeMin:.3f}, entre las {timeMin} y "
                      f"las {timeMin+1} (hora más económica)"
@@ -354,7 +368,7 @@ def main():
                         "---")
             msgMedium = (f"{msgTitle}\n{msgMin}{msgMax}\n"
                          f"\n{table}\n")
-            with open(nameFile(now), 'w') as f:
+            with open(f"{nameFile(now)}_post.md", 'w') as f:
                       f.write(msgMedium)
             if dst == 'medium':
                 res = api.publishImage(msgMedium, nameGraph, alt=msgAlt)
