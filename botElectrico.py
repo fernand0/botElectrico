@@ -175,18 +175,18 @@ def masBarato(data, hours):
     maxV = 0
     minI = 0
     minV = 100000
-    for i,hour in enumerate(values[startH: endH]):
+    for i, hour in enumerate(values[startH: endH]):
         print(f"{hour}")
         if hour>maxV:
             maxV = hour
-            maxI = i
+            maxI = startH + i
             hourMax = hour
         if hour<minV:
             minV = hour
-            minI = i
+            minI = startH + i
             hourMin = hour
-    print(f"Max {maxV} {startH+maxI}")
-    print(f"Min {minV} {startH+minI}")
+    print(f"Max {maxV} {maxI}")
+    print(f"Min {minV} {minI}")
     return((minI, hourMin), (maxI, hourMax))
 
 def main():
@@ -220,6 +220,7 @@ def main():
             now = convertToDatetime("21:00")
     elif not now:
         now = datetime.datetime.now()
+    now = convertToDatetime("21:00")
     # print(now)
 
     dd = now.weekday()
@@ -369,8 +370,8 @@ def main():
                         "---")
             msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n"
                          f"\n{table}\n")
-            msgTitle = (f"{msgTitle}\n{msgMin}{msgMax}\n"
-                         f"\n{table}\n")
+            msgTitle = (f"{msgTitle}\n{msgMin}{msgMax}\n")
+                         #f"\n{table}\n")
             with open(f"{nameFile(now)}-post.md", 'w') as f:
                       f.write(msgMedium)
             if dst == 'medium':
