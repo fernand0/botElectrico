@@ -359,8 +359,8 @@ def main():
             dateP = str(now).split(' ')[0]
             dateS = str(now + datetime.timedelta(days=1)).split(' ')[0]
             msgTitle = f"Evolución precio para el día {dateS}"
-            msgMin = (f"Mínimo a las {minDay[0]} ({minDay[1]:.3f}). ")
-            msgMax = (f"Máximo a las {maxDay[0]} ({maxDay[1]:.3f}). ")
+            msgMin = (f"Mínimo a las {minDay[0]}:00 ({minDay[1]:.3f}). ")
+            msgMax = (f"Máximo a las {maxDay[0]}:00 ({maxDay[1]:.3f}). ")
             msgAlt = (f"{msgTitle}. {msgMin}\n{msgMax}")
             msgTitle2 = (f"---\n"
                          "layout: post\n"
