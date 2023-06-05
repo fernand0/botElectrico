@@ -220,7 +220,7 @@ def main():
             now = convertToDatetime("21:00")
     elif not now:
         now = datetime.datetime.now()
-    now = convertToDatetime("21:00")
+    # now = convertToDatetime("21:00")
     # print(now)
 
     dd = now.weekday()
