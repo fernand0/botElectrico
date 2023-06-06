@@ -368,7 +368,9 @@ def main():
                         f"date:   {dateP} 21:00:59 +0200\n"
                         "categories: jekyll update\n"
                         "---")
-            msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n"
+            msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
+                         f"![Gráfica de la evolución del precio para el día "
+                         f"{dateS}](url}\n\n"
                          f"\n{table}\n")
             msgTitle = (f"{msgTitle}\n{msgMin}{msgMax}\n")
                          #f"\n{table}\n")
