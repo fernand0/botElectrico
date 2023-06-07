@@ -370,7 +370,7 @@ def main():
                         "---")
             msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
                          f"![Gráfica de la evolución del precio para el día "
-                         f"{dateS}](url}\n\n"
+                         f"{dateS}](url)\n\n"
                          f"\n{table}\n")
             msgTitle = (f"{msgTitle}\n{msgMin}{msgMax}\n")
                          #f"\n{table}\n")
