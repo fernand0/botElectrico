@@ -164,7 +164,7 @@ def masBarato(data, hours):
     if endH == '00':
         endH = '24'
 
-    print(f"start: {startH}, {endH}")
+    logging.info(f"start: {startH}, {endH}")
     # print(data)
     values=[float(val['PCB'].replace(',','.'))/1000
             for val in data["PVPC"]]
@@ -176,7 +176,7 @@ def masBarato(data, hours):
     minI = 0
     minV = 100000
     for i, hour in enumerate(values[startH: endH]):
-        print(f"{hour}")
+        # logging.info(f"Hour: {hour}")
         if hour>maxV:
             maxV = hour
             maxI = startH + i
@@ -185,8 +185,8 @@ def masBarato(data, hours):
             minV = hour
             minI = startH + i
             hourMin = hour
-    print(f"Max {maxV} {maxI}")
-    print(f"Min {minV} {minI}")
+    logging.info(f"Max {maxV} {maxI}")
+    logging.info(f"Min {minV} {minI}")
     return((minI, hourMin), (maxI, hourMax))
 
 def main():
@@ -274,7 +274,7 @@ def main():
                 break
 
     if minData:
-        print(f"minData: {minData}")
+        logging.info(f"minData: {minData}")
         timeMin = minData[0]
         timeMax = maxData[0]
 
@@ -325,20 +325,21 @@ def main():
             f"{button[franja]} {msgBase1}"
             f"{msgPrecio}"
             )
-    print(msgBase1)
-    print(len(msgBase1))
+    logging.info(f"Msg base: {msgBase1}")
+    logging.info(f"Len: {len(msgBase1)}")
     msg = msgBase1
 
     if len(msg)>280:
-        print("Muy largo")
+        logging.warning("Muy largo")
         return
 
     if mode == 'test':
         dsts = {
+                "mastodon": "@fernand0@mastodon.social",
                 "twitter": "fernand0Test",
                 "telegram": "testFernand0",
                 "facebook": "Fernand0Test",
-                }
+               }
     else:
         dsts = {
                 "twitter": "botElectrico",
@@ -348,12 +349,12 @@ def main():
                 "medium": "botElectrico"
                 }
 
-    print(dsts)
+    logging.info(f"Destinations: {dsts}")
 
+    imgUrl = ''
     for dst in dsts:
-        print(dst)
+        logging.info(f"Destination: {dst}")
         api = getApi(dst, dsts[dst])
-        print(api, dsts[dst])
 
         if now.hour == timeGraph:
             dateP = str(now).split(' ')[0]
@@ -368,10 +369,17 @@ def main():
                         f"date:   {dateP} 21:00:59 +0200\n"
                         "categories: jekyll update\n"
                         "---")
-            msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
+            if imgUrl:
+                msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
+                         f"![Gráfica de la evolución del precio para el día "
+                         f"{dateS}]({imgUrl})\n\n"
+                         f"\n{table}\n")
+            else:
+                msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
                          f"![Gráfica de la evolución del precio para el día "
                          f"{dateS}](url)\n\n"
                          f"\n{table}\n")
+
             msgTitle = (f"{msgTitle}\n{msgMin}{msgMax}\n")
                          #f"\n{table}\n")
             with open(f"{nameFile(now)}-post.md", 'w') as f:
@@ -380,6 +388,16 @@ def main():
                 res = api.publishImage(msgMedium, nameGraph, alt=msgAlt)
             else:
                 res = api.publishImage(msgTitle, nameGraph, alt=msgAlt)
+                if hasattr(api, 'lastRes'): 
+                    lastRes = api.lastRes
+                else:
+                    lastRes = None
+
+                if (lastRes 
+                    and ('media_attachments' in api.lastRes)
+                    and (len(api.lastRes['media_attachments']) >0) 
+                    and ('url' in api.lastRes['media_attachments'][0])):
+                    imgUrl = api.lastRes['media_attachments'][0]['url']
         if dst != 'medium':
             res = api.publishPost(msg, "", "")
             print(res)
