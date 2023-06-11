@@ -4,3 +4,18 @@
 
 layout: home
 ---
+
+<h1>Último post</h1>
+{{ site.posts.first.content }}
+
+<h1>Posts anteriores</h1>
+<ul>
+{% for post in site.posts offset:1 %}
+  <li>
+    <h2><a href="{{ post.url }}">{{ post.title }}</a></h2>
+    {% if forloop.first %}
+      {{ post.content }}
+    {% endif %}
+  </li>
+{% endfor %}
+</ul>
