@@ -5,7 +5,7 @@
 layout: home
 ---
 
-<h1>Último post</h1>
+<h1>{{ site.posts.first.title }}</h1>
 {{ site.posts.first.content }}
 
 <h1>Posts anteriores</h1>
