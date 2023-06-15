@@ -7,4 +7,3 @@ layout: home
 
 <h1>{{ site.posts.first.title }}</h1>
 {{ site.posts.first.content }}
-
