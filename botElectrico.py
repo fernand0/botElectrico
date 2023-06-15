@@ -365,14 +365,14 @@ def main():
             msgAlt = (f"{msgTitle}. {msgMin}\n{msgMax}")
             msgTitle2 = (f"---\n"
                          "layout: post\n"
-                        f"title:  '{msgTitle}'\n"
-                        f"date:   {dateP} 21:00:59 +0200\n"
-                        "categories: jekyll update\n"
-                        "---")
+                         f"title:  '{msgTitle}'\n"
+                         f"date:   {dateP} 21:00:59 +0200\n"
+                         "categories: jekyll update\n"
+                         "---")
             if imgUrl:
                 msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
-                         f"![Gráfica de la evolución del precio para el día "
-                         f"{dateS}]({imgUrl})\n\n"
+                             f"![Gráfica de la evolución del precio para el día "
+                             f"{dateS}]({imgUrl})\n\n"
                          f"\n{table}\n")
             else:
                 msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
@@ -387,17 +387,21 @@ def main():
             if dst == 'medium':
                 res = api.publishImage(msgMedium, nameGraph, alt=msgAlt)
             else:
-                res = api.publishImage(msgTitle, nameGraph, alt=msgAlt)
-                if hasattr(api, 'lastRes'): 
-                    lastRes = api.lastRes
-                else:
-                    lastRes = None
+                try:
+                    res = api.publishImage(msgTitle, nameGraph, alt=msgAlt)
+                    if hasattr(api, 'lastRes'): 
+                        lastRes = api.lastRes
+                    else:
+                        lastRes = None
 
-                if (lastRes 
-                    and ('media_attachments' in api.lastRes)
-                    and (len(api.lastRes['media_attachments']) >0) 
-                    and ('url' in api.lastRes['media_attachments'][0])):
-                    imgUrl = api.lastRes['media_attachments'][0]['url']
+                    if (lastRes 
+                        and ('media_attachments' in api.lastRes)
+                        and (len(api.lastRes['media_attachments']) >0) 
+                        and ('url' in api.lastRes['media_attachments'][0])):
+                        imgUrl = api.lastRes['media_attachments'][0]['url']
+                except:
+                    logging.info(f"Fail!")
+
         if dst != 'medium':
             res = api.publishPost(msg, "", "")
             print(res)
