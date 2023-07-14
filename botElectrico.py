@@ -106,6 +106,103 @@ def makeTable(values):
 
     return text
 
+def makeJs(values, minDay, maxDay, nowNext):
+   program = """
+   import Chart from 'chart.js/auto'
+   import annotationPlugin from 'chartjs-plugin-annotation';
+    
+   Chart.register(annotationPlugin);
+    
+   (async function() {
+
+    const data = [
+    """
+   for i,val in enumerate(values):
+        program = f"{program}\n{{hour: {i}, pvpc: {values[i]} }},"
+        
+   program = f"{program}\n ,];\n\n"
+
+   program = f"""{program}
+
+   new Chart(
+    document.getElementById('acquisitions'),
+    {{
+      type: 'line',
+      options: {{
+        animation: false,
+        plugins: {{
+          legend: {{
+            display: false
+          }},
+          tooltip: {{
+            enabled: false
+          }}
+        }},
+  	plugins: {{
+  	  annotation: {{
+  	    annotations: {{
+  	      point1: {{
+  	        type: 'point',
+  	        xValue: {minDay[0]},
+  	        yValue: {minDay[1]},
+  	        backgroundColor: 'rgba(255, 99, 132, 0.25)'
+          }},
+	     label1: {{
+		     type: 'label',
+		     backgroundColor: 'rgba(245,245,245)',
+		     xValue: {minDay[0]},
+             yValue: {minDay[1]},
+		     xAdjust: 100,
+             yAdjust: -200,
+		     content: ['Min: {minDay[1]} ({minDay[0]}:00)'],
+		     textAlign: 'start',
+	     	     callout: {{
+            	         display: true,
+            	         side: 10 
+                 }}
+         }},
+	     point2: {{
+  	        type: 'point',
+  	        xValue: {maxDay[0]},
+  	        yValue: {maxDay[1]},
+  	        backgroundColor: 'rgba(255, 99, 132, 0.25)'
+          }},
+
+	     label2: {{
+		     type: 'label',
+		     backgroundColor: 'rgba(245,245,245)',
+		     xValue: {maxDay[0]},
+             yValue: {maxDay[1]},
+		     xAdjust: -300,
+             yAdjust: -100,
+		     content: ['Max: {maxDay[1]} ({maxDay[0]}:00)'],
+		     textAlign: 'start',
+	     	     callout: {{
+            	         display: true,
+            	         side: 10 
+                 }}
+         }}
+        }}
+      }}
+    }}
+      }},
+      data: {{
+        labels: data.map(row => row.hour),
+        datasets: [
+          {{
+            label: 'Evolución precio para el día {nowNext}',
+            data: data.map(row => row.pvpc)
+          }}
+        ]
+      }}
+    }}
+  );
+
+}})();
+"""
+
+   return program
+
 def graficaDia(now, delta):
 
     nowNext = now + datetime.timedelta(hours=delta)
@@ -156,7 +253,7 @@ def graficaDia(now, delta):
     plt.plot(values)
     name = f"{nameFile(nowNext)}_image.png"
     plt.savefig(name)
-    return name, minDay, maxDay, values
+    return name, minDay, maxDay, values, nowNext
 
 def masBarato(data, hours):
     startH = int(hours[0].split(':')[0])
@@ -236,7 +333,6 @@ def main():
 
     precio = data["PVPC"][pos]["PCB"]
 
-
     if pos < 23:
         prizeNext = data["PVPC"][pos + 1]["PCB"]
     else:
@@ -285,9 +381,14 @@ def main():
     msgBase1 = f"{msgBase1} periodo {franja}"
 
     timeGraph = 21
-    if hh == timeGraph:
-        nameGraph, minDay, maxDay, values = graficaDia(now, 24 - timeGraph)
+    if True: #hh == timeGraph:
+        nameGraph, minDay, maxDay, values, nowNext = graficaDia(now, 
+                                                                24 - timeGraph)
         table = makeTable(values)
+        js = makeJs(values, minDay, maxDay, str(nowNext).split(' ')[0])
+        with open(f"/tmp/kk.js", 'w') as f:
+            f.write(js)
+    return
 
 
     if franja == "valle":
