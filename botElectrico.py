@@ -261,7 +261,7 @@ def masBarato(data, hours):
     if endH == '00':
         endH = '24'
 
-    print(f"start: {startH}, {endH}")
+    logging.info(f"start: {startH}, {endH}")
     # print(data)
     values=[float(val['PCB'].replace(',','.'))/1000
             for val in data["PVPC"]]
@@ -272,18 +272,18 @@ def masBarato(data, hours):
     maxV = 0
     minI = 0
     minV = 100000
-    for i,hour in enumerate(values[startH: endH]):
-        print(f"{hour}")
+    for i, hour in enumerate(values[startH: endH]):
+        # logging.info(f"Hour: {hour}")
         if hour>maxV:
             maxV = hour
-            maxI = i
+            maxI = startH + i
             hourMax = hour
         if hour<minV:
             minV = hour
-            minI = i
+            minI = startH + i
             hourMin = hour
-    print(f"Max {maxV} {startH+maxI}")
-    print(f"Min {minV} {startH+minI}")
+    logging.info(f"Max {maxV} {maxI}")
+    logging.info(f"Min {minV} {minI}")
     return((minI, hourMin), (maxI, hourMax))
 
 def main():
@@ -317,6 +317,7 @@ def main():
             now = convertToDatetime("21:00")
     elif not now:
         now = datetime.datetime.now()
+    # now = convertToDatetime("21:00")
     # print(now)
 
     dd = now.weekday()
@@ -369,7 +370,7 @@ def main():
                 break
 
     if minData:
-        print(f"minData: {minData}")
+        logging.info(f"minData: {minData}")
         timeMin = minData[0]
         timeMax = maxData[0]
 
@@ -409,8 +410,8 @@ def main():
             )
 
     if empiezaTramo:
-        prizeMin = float(minData[1])/1000
-        prizeMax = float(maxData[1])/1000
+        prizeMin = minData[1]
+        prizeMax = maxData[1]
         msgMaxMin = (
                      f"\nMín: {prizeMin:.3f}, entre las {timeMin} y "
                      f"las {timeMin+1} (hora más económica)"
@@ -425,20 +426,21 @@ def main():
             f"{button[franja]} {msgBase1}"
             f"{msgPrecio}"
             )
-    print(msgBase1)
-    print(len(msgBase1))
+    logging.info(f"Msg base: {msgBase1}")
+    logging.info(f"Len: {len(msgBase1)}")
     msg = msgBase1
 
     if len(msg)>280:
-        print("Muy largo")
+        logging.warning("Muy largo")
         return
 
     if mode == 'test':
         dsts = {
+                "mastodon": "@fernand0@mastodon.social",
                 "twitter": "fernand0Test",
                 "telegram": "testFernand0",
                 "facebook": "Fernand0Test",
-                }
+               }
     else:
         dsts = {
                 "twitter": "botElectrico",
@@ -448,33 +450,59 @@ def main():
                 "medium": "botElectrico"
                 }
 
-    print(dsts)
+    logging.info(f"Destinations: {dsts}")
 
+    imgUrl = ''
     for dst in dsts:
-        print(dst)
+        logging.info(f"Destination: {dst}")
         api = getApi(dst, dsts[dst])
-        print(api, dsts[dst])
 
         if now.hour == timeGraph:
+            dateP = str(now).split(' ')[0]
             dateS = str(now + datetime.timedelta(days=1)).split(' ')[0]
             msgTitle = f"Evolución precio para el día {dateS}"
-            msgMin = (f"Mínimo a las {minDay[0]} ({minDay[1]:.3f}). ")
-            msgMax = (f"Máximo a las {maxDay[0]} ({maxDay[1]:.3f}). ")
+            msgMin = (f"Mínimo a las {minDay[0]}:00 ({minDay[1]:.3f}). ")
+            msgMax = (f"Máximo a las {maxDay[0]}:00 ({maxDay[1]:.3f}). ")
             msgAlt = (f"{msgTitle}. {msgMin}\n{msgMax}")
-            msgTitle = (f"---\n"
+            msgTitle2 = (f"---\n"
                          "layout: post\n"
-                        f"title:  '{msgTitle}'\n"
-                        f"date:   {dateS} 21:00:59 +0200\n"
-                        "categories: jekyll update\n"
-                        "---")
-            msgMedium = (f"{msgTitle}\n{msgMin}{msgMax}\n"
+                         f"title:  '{msgTitle}'\n"
+                         f"date:   {dateP} 21:00:59 +0200\n"
+                         "categories: jekyll update\n"
+                         "---")
+            if imgUrl:
+                msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
+                             f"![Gráfica de la evolución del precio para el día "
+                             f"{dateS}]({imgUrl})\n\n"
                          f"\n{table}\n")
-            with open(f"{nameFile(now)}_post.md", 'w') as f:
+            else:
+                msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
+                         f"![Gráfica de la evolución del precio para el día "
+                         f"{dateS}](url)\n\n"
+                         f"\n{table}\n")
+
+            msgTitle = (f"{msgTitle}\n{msgMin}{msgMax}\n")
+                         #f"\n{table}\n")
+            with open(f"{nameFile(now)}-post.md", 'w') as f:
                       f.write(msgMedium)
             if dst == 'medium':
                 res = api.publishImage(msgMedium, nameGraph, alt=msgAlt)
             else:
-                res = api.publishImage(msgTitle, nameGraph, alt=msgAlt)
+                try:
+                    res = api.publishImage(msgTitle, nameGraph, alt=msgAlt)
+                    if hasattr(api, 'lastRes'): 
+                        lastRes = api.lastRes
+                    else:
+                        lastRes = None
+
+                    if (lastRes 
+                        and ('media_attachments' in api.lastRes)
+                        and (len(api.lastRes['media_attachments']) >0) 
+                        and ('url' in api.lastRes['media_attachments'][0])):
+                        imgUrl = api.lastRes['media_attachments'][0]['url']
+                except:
+                    logging.info(f"Fail!")
+
         if dst != 'medium':
             res = api.publishPost(msg, "", "")
             print(res)
