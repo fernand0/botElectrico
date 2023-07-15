@@ -156,6 +156,10 @@ def graficaDia(now, delta):
     plt.plot(values)
     name = f"{nameFile(nowNext)}_image.png"
     plt.savefig(name)
+    name2 = f"{nameFile(nowNext)}_image.svg"
+    plt.savefig(name2)
+
+
     return name, minDay, maxDay, values
 
 def masBarato(data, hours):
@@ -286,10 +290,9 @@ def main():
     msgBase1 = f"{msgBase1} periodo {franja}"
 
     timeGraph = 21
-    if hh == timeGraph:
+    if True: #hh == timeGraph:
         nameGraph, minDay, maxDay, values = graficaDia(now, 24 - timeGraph)
         table = makeTable(values)
-
 
     if franja == "valle":
         if dd <= 4:
@@ -370,10 +373,14 @@ def main():
                          "categories: jekyll update\n"
                          "---")
             if imgUrl:
+                with open(f"{nameGraph[:-4]}.svg", 'r') as f:
+                    imageSvg = f.read()
+                imageSvg = imageSvg[imageSvg.find('<svg'):]
                 msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
-                             f"![Gráfica de la evolución del precio para el día "
-                             f"{dateS}]({imgUrl})\n\n"
-                         f"\n{table}\n")
+                             f"{imageSvg}\n"
+                             # f"![Gráfica de la evolución del precio para el día "
+                             # f"{dateS}]({imgUrl})\n\n"
+                             f"\n{table}\n")
             else:
                 msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
                          f"![Gráfica de la evolución del precio para el día "
