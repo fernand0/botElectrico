@@ -376,6 +376,9 @@ def main():
                 with open(f"{nameGraph[:-4]}.svg", 'r') as f:
                     imageSvg = f.read()
                 imageSvg = imageSvg[imageSvg.find('<svg'):]
+                posWidth = imageSvg.find("width")
+                posViewBox = imageSvg.find("viewBox")
+                imageSvg = imageSvg[:posWidth]+imageSvg[posViewBox:]
                 msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
                              f"{imageSvg}\n"
                              # f"![Gráfica de la evolución del precio para el día "
