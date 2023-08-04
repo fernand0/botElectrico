@@ -381,8 +381,8 @@ def main():
                 imageSvg = imageSvg[:posWidth]+imageSvg[posViewBox:]
                 msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
                              f"{imageSvg}\n"
-                             # f"![Gráfica de la evolución del precio para el día "
-                             # f"{dateS}]({imgUrl})\n\n"
+                             # f"![Gráfica de la evolución del precio para el
+                             # día " f"{dateS}]({imgUrl})\n\n"
                              f"\n{table}\n")
             else:
                 msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
