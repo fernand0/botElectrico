@@ -4,11 +4,12 @@ import datetime
 import getpass
 import json
 import logging
+import requests
+import sys
+
 import matplotlib.pyplot as plt
 import matplotlib.ticker
 import matplotlib.patches as patches
-import requests
-import sys
 
 from socialModules.configMod import *
 
