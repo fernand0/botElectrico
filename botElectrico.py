@@ -102,7 +102,7 @@ def makeTable(values):
         hh = hh + 1
     text = f"{text} \n"
 
-    print(f"New Table: \n{text}")
+    logging.debug(f"New Table: \n{text}")
 
     return text
 
@@ -212,7 +212,7 @@ def graficaDia(now, delta):
             for val in data["PVPC"]]
             #for val in data["included"][0]["attributes"]["values"]]
 
-    logging.info(values)
+    logging.debug(f"Values: {values}")
 
     plt.title(f"Evolución precio para el día {str(nowNext).split(' ')[0]}")
 
@@ -257,7 +257,7 @@ def graficaDia(now, delta):
     plt.savefig(name2)
 
 
-    return name, minDay, maxDay, values
+    return name, minDay, maxDay, values, nowNext
 
 def masBarato(data, hours):
     startH = int(hours[0].split(':')[0])
@@ -289,6 +289,49 @@ def masBarato(data, hours):
     logging.info(f"Max {maxV} {maxI}")
     logging.info(f"Min {minV} {minI}")
     return((minI, hourMin), (maxI, hourMax))
+
+def getPrices(data, hh):
+    pos = int(hh)
+    logging.info(f"Position: {pos}")
+
+    prize = data["PVPC"][pos]["PCB"]
+
+    if pos < 23:
+        prizeNext = data["PVPC"][pos + 1]["PCB"]
+    else:
+        nextDay = now + datetime.timedelta(hours=1)
+        dataNext = getData(nextDay)
+
+        prizeNext = data["PVPC"][0]["PCB"]
+
+    prize = float(prize.replace(',','.')) / 1000
+    prizeNext = float(prizeNext.replace(',','.')) / 1000
+
+    return prize, prizeNext
+
+def checkTimeFrame(ranges, now, dd):
+    if dd > 4:
+        tipoHora = ''
+        frame = ["00:00", "24:00"]
+        start = convertToDatetime(frame[0])
+        end = convertToDatetime(frame[1])
+        frameType = "valle"
+    else:
+        for hours in ranges:
+            start = convertToDatetime(ranges[hours][0])
+            end = convertToDatetime(ranges[hours][1])
+
+            if ((start <= now) and (now < end)):
+                if hours[-1].isdigit():
+                    # llano1, punta1, ....
+                    frameType = hours[:-1]
+
+                tipoHora = hours
+                break
+            frame = ranges[hours]
+
+    return start, end, frameType, frame, tipoHora
+
 
 def main():
 
@@ -331,47 +374,42 @@ def main():
     data = getData(now)
     # Trying to catch errors in obtaining data
 
-    pos = int(hh)
-    logging.info(f"Position: {pos}")
-    # tipo = data["included"][0]["attributes"]["title"]
-    # tipo = tipo.replace("M", "k")
+    prize, prizeNext = getPrices(data, hh)
 
-    precio = data["PVPC"][pos]["PCB"]
-
-    if pos < 23:
-        prizeNext = data["PVPC"][pos + 1]["PCB"]
-    else:
-        nextDay = now + datetime.timedelta(hours=1)
-        dataNext = getData(nextDay)
-
-        prizeNext = data["PVPC"][0]["PCB"]
-
-    prize = float(precio.replace(',','.')) / 1000
-    prizeNext = float(prizeNext.replace(',','.')) / 1000
-
-    franja = "valle"
     luego = ''
     empiezaTramo = False
     minData = None
 
-    if dd > 4:
-        hours = ["00:00", "24:00"]
-        minData, maxData = masBarato(data, hours)
-        start = convertToDatetime(hours[0])
-        end = convertToDatetime(hours[1])
-    else:
-        for hours in ranges:
-            start = convertToDatetime(ranges[hours][0])
-            end = convertToDatetime(ranges[hours][1])
+    now = datetime.datetime.now()
 
-            if ((start <= now) and (now < end)):
-                if hours[-1].isdigit():
-                    # llano1, punta1, ....
-                    franja = hours[:-1]
+    # if dd > 4:
+    #     # Weekend
+    #     frame = ["00:00", "24:00"]
+    #     start = convertToDatetime(frame[0])
+    #     end = convertToDatetime(frame[1])
+    #     frameType = "valle"
+    # else:
+    #     # Weekday
+    #     print("Weekday")
+    #     start, end, frameType, frame, tipoHora = checkTimeFrame(ranges,now)
+    #     # minData, maxData = masBarato(data, ranges[hours])
+    start, end, frameType, frame, tipoHora = checkTimeFrame(ranges, now, dd)
+    minData, maxData = masBarato(data, frame)
+        # for hours in ranges:
+        #     start = convertToDatetime(ranges[hours][0])
+        #     end = convertToDatetime(ranges[hours][1])
 
-                tipoHora = hours
-                minData, maxData = masBarato(data, ranges[hours])
-                break
+        #     if ((start <= now) and (now < end)):
+        #         if hours[-1].isdigit():
+        #             # llano1, punta1, ....
+        #             frameType = hours[:-1]
+
+        #         tipoHora = hours
+        #         minData, maxData = masBarato(data, ranges[hours])
+        #         break
+        # print(frameType, hours, tipoHora)
+        # print(checkTimeFrame(ranges, now))
+        # return
 
     if minData:
         logging.info(f"minData: {minData}")
@@ -383,18 +421,17 @@ def main():
         msgBase1 = "Empieza"
     else:
         msgBase1 = "Estamos en"
-    msgBase1 = f"{msgBase1} periodo {franja}"
+    msgBase1 = f"{msgBase1} periodo {frameType}"
 
     timeGraph = 21
     if True: #hh == timeGraph:
-        nameGraph, minDay, maxDay, values = graficaDia(now, 24 - timeGraph)
+        nameGraph, minDay, maxDay, values, nowNext = graficaDia(now, 24 - timeGraph)
         table = makeTable(values)
         js = makeJs(values, minDay, maxDay, str(nowNext).split(' ')[0])
         with open(f"/tmp/kk.js", 'w') as f:
             f.write(js)
-    return
 
-    if franja == "valle":
+    if frameType == "valle":
         if dd <= 4:
             msgFranja = "(entre las 00:00 y las 8:00)"
         else:
@@ -425,7 +462,7 @@ def main():
         msgBase1 = f"{msgBase1}{msgMaxMin}"
         #f" Luego baja."
     msgBase1 = (
-            f"{button[franja]} {msgBase1}"
+            f"{button[frameType]} {msgBase1}"
             f"{msgPrecio}"
             )
     logging.info(f"Msg base: {msgBase1}")
