@@ -341,15 +341,14 @@ def main():
                 "mastodon": "@fernand0@mastodon.social",
                 "twitter": "fernand0Test",
                 "telegram": "testFernand0",
-                "facebook": "Fernand0Test",
+                "blsk": "botElectrico.bsky.social"
                }
     else:
         dsts = {
                 "twitter": "botElectrico",
                 "telegram": "botElectrico",
                 "mastodon": "@botElectrico@botsin.space",
-                "facebook": "BotElectrico",
-                "medium": "botElectrico"
+                "blsk": "botElectrico.bsky.social"
                 }
 
     logging.info(f"Destinations: {dsts}")
