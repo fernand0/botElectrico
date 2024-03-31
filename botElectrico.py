@@ -15,7 +15,20 @@ from socialModules.configMod import *
 
 apiBase = "https://apidatos.ree.es/"
 
-clock = ['🕛', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚']
+clock = ['🕛', '🕐', '🕑', '🕒', '🕓', '🕔', 
+         '🕕', '🕖', '🕗', '🕘', '🕙', '🕚']
+
+ranges = {
+            "llano1": ["08:00", "10:00"],
+            "punta1": ["10:00", "14:00"],
+            "llano2": ["14:00", "18:00"],
+            "punta2": ["18:00", "22:00"],
+            "llano3": ["22:00", "24:00"],
+            "valle":  ["00:00", "8:00"]
+}
+
+button = {"llano": "🟠", "valle": "🟢", "punta": "🔴"}
+
 
 def nameFile(now):
     return f"/tmp/{now.year}-{now.month:0>2}-{now.day:0>2}"
@@ -343,17 +356,6 @@ def main():
             mode = 'test'
             if (len(sys.argv) > 2):
                 now = convertToDatetime(sys.argv[2])
-
-    ranges = {
-            "llano1": ["08:00", "10:00"],
-            "punta1": ["10:00", "14:00"],
-            "llano2": ["14:00", "18:00"],
-            "punta2": ["18:00", "22:00"],
-            "llano3": ["22:00", "24:00"],
-            "valle":  ["00:00", "8:00"]
-            }
-
-    button = {"llano": "🟠", "valle": "🟢", "punta": "🔴"}
 
     logging.basicConfig(
             stream=sys.stdout, level=logging.DEBUG,
