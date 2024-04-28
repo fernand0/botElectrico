@@ -334,6 +334,7 @@ def checkTimeFrame(ranges, now, dd):
         for hours in ranges:
             start = convertToDatetime(ranges[hours][0])
             end = convertToDatetime(ranges[hours][1])
+            logging.info(f"Now: {now} Start:{start} End: {end}")
 
             if ((start <= now) and (now < end)):
                 if hours[-1].isdigit():
