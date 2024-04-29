@@ -336,6 +336,7 @@ def checkTimeFrame(ranges, now, dd):
             end = convertToDatetime(ranges[hours][1])
             logging.info(f"Now: {now} Start:{start} End: {end}")
 
+            frame = ranges[hours]
             if ((start <= now) and (now < end)):
                 if hours[-1].isdigit():
                     # llano1, punta1, ....
@@ -343,7 +344,6 @@ def checkTimeFrame(ranges, now, dd):
 
                 tipoHora = hours
                 break
-            frame = ranges[hours]
 
     return start, end, frameType, frame, tipoHora
 
