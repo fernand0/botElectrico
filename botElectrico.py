@@ -341,6 +341,8 @@ def checkTimeFrame(ranges, now, dd):
                 if hours[-1].isdigit():
                     # llano1, punta1, ....
                     frameType = hours[:-1]
+                else:
+                    frameType = hours
 
                 tipoHora = hours
                 break
