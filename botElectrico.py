@@ -331,20 +331,20 @@ def checkTimeFrame(ranges, now, dd):
         end = convertToDatetime(frame[1])
         frameType = "valle"
     else:
-        for hours in ranges:
-            start = convertToDatetime(ranges[hours][0])
-            end = convertToDatetime(ranges[hours][1])
+        for typeH in ranges:
+            start = convertToDatetime(ranges[typeH][0])
+            end = convertToDatetime(ranges[typeH][1])
             logging.info(f"Now: {now} Start:{start} End: {end}")
 
-            frame = ranges[hours]
+            frame = ranges[typeH]
             if ((start <= now) and (now < end)):
-                if hours[-1].isdigit():
+                if typeH[-1].isdigit():
                     # llano1, punta1, ....
-                    frameType = hours[:-1]
+                    frameType = typeH[:-1]
                 else:
-                    frameType = hours
+                    frameType = typeH
 
-                tipoHora = hours
+                tipoHora = typeH
                 break
 
     return start, end, frameType, frame, tipoHora
@@ -388,34 +388,8 @@ def main():
 
     now = datetime.datetime.now()
 
-    # if dd > 4:
-    #     # Weekend
-    #     frame = ["00:00", "24:00"]
-    #     start = convertToDatetime(frame[0])
-    #     end = convertToDatetime(frame[1])
-    #     frameType = "valle"
-    # else:
-    #     # Weekday
-    #     print("Weekday")
-    #     start, end, frameType, frame, tipoHora = checkTimeFrame(ranges,now)
-    #     # minData, maxData = masBarato(data, ranges[hours])
     start, end, frameType, frame, tipoHora = checkTimeFrame(ranges, now, dd)
     minData, maxData = masBarato(data, frame)
-        # for hours in ranges:
-        #     start = convertToDatetime(ranges[hours][0])
-        #     end = convertToDatetime(ranges[hours][1])
-
-        #     if ((start <= now) and (now < end)):
-        #         if hours[-1].isdigit():
-        #             # llano1, punta1, ....
-        #             frameType = hours[:-1]
-
-        #         tipoHora = hours
-        #         minData, maxData = masBarato(data, ranges[hours])
-        #         break
-        # print(frameType, hours, tipoHora)
-        # print(checkTimeFrame(ranges, now))
-        # return
 
     if minData:
         logging.info(f"minData: {minData}")
@@ -462,11 +436,8 @@ def main():
                      f"las {timeMin+1} (hora más económica)"
                      f"\nMáx: {prizeMax:.3f}, entre las {timeMax} y "
                      f"las {timeMax+1} (hora más cara)"
-                     #f"\nHora más cara entre las {timeMax} y las {timeMax+1}: "
-                     #f"{prizeMax:.3f}"
                      )
         msgBase1 = f"{msgBase1}{msgMaxMin}"
-        #f" Luego baja."
     msgBase1 = (
             f"{button[frameType]} {msgBase1}"
             f"{msgPrecio}"
@@ -559,7 +530,6 @@ def main():
             print(res)
 
         print(res)
-
 
 if __name__ == "__main__":
     main()
