@@ -119,7 +119,7 @@ def makeTable(values, minDay, maxDay):
         if i == minDay[0]:
             color = 'MediumSeaGreen'
         if color:
-            textt = f"<span style='border:2px solid {color};'>{text}</span>"
+            textt = f"<span style='border:2px solid {color};'>{textt}</span>"
         text = f"{text}{textt}"
         if (hh % 4 == 3):
             text = f"{text} | \n"
