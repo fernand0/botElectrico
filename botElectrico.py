@@ -110,9 +110,9 @@ def makeTable(values, minDay, maxDay):
         else:
             prevVal = 1000 #FIXME
         text = (f"{text}|") 
-        textt = (f"{clock[hh % 12]} "
+        textt = (f"{clock[hh % 12]} ({hh:02}:00)"
                 f"{nextSymbol(val, prevVal)} {val:.3f}"
-                f" ({hh:02}:00)")
+                )
         color = ''
         if i == maxDay[0]:
             color = 'Tomato'
