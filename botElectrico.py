@@ -19,13 +19,13 @@ clock = ['🕛', '🕐', '🕑', '🕒', '🕓', '🕔',
          '🕕', '🕖', '🕗', '🕘', '🕙', '🕚']
 
 ranges = {
-            "llano1": ["08:00", "10:00"],
-            "punta1": ["10:00", "14:00"],
-            "llano2": ["14:00", "18:00"],
-            "punta2": ["18:00", "22:00"],
-            "llano3": ["22:00", "24:00"],
-            "valle":  ["00:00", "8:00"]
-}
+        "llano1": ["08:00", "10:00"], 
+        "punta1": ["10:00", "14:00"], 
+        "llano2": ["14:00", "18:00"], 
+        "punta2": ["18:00", "22:00"], 
+        "llano3": ["22:00", "24:00"], 
+        "valle":  ["00:00", "8:00"] 
+        }
 
 button = {"llano": "🟠", "valle": "🟢", "punta": "🔴"}
 
@@ -99,7 +99,7 @@ def convertToDatetime(myTime):
 
     return converted
 
-def makeTable(values):
+def makeTable(values, minDay, maxDay):
     hh = 0
     # text = "<table>"
     text = ""
@@ -108,9 +108,17 @@ def makeTable(values):
             prevVal = values[i-1]
         else:
             prevVal = 1000 #FIXME
-        text = (f"{text}| {clock[hh % 12]} "
+        text = (f"{text}|") 
+        text = (f"{clock[hh % 12]} "
                 f"{nextSymbol(val, prevVal)} {val:.3f}"
                 f" ({hh:02}:00)")
+        color = ''
+        if i == maxDay[0]:
+            color = 'Tomato'
+        if i == minDay[0]:
+            color = 'MediumSeaGreen'
+        if color:
+            text = f"<span style='border:2px solid {color};'>{text}</span>"
         if (hh % 4 == 3):
             text = f"{text} | \n"
         hh = hh + 1
@@ -404,9 +412,9 @@ def main():
     msgBase1 = f"{msgBase1} periodo {frameType}"
 
     timeGraph = 21
-    if True: #hh == timeGraph:
+    if hh == timeGraph:
         nameGraph, minDay, maxDay, values, nowNext = graficaDia(now, 24 - timeGraph)
-        table = makeTable(values)
+        table = makeTable(values, minDay, maxDay)
         js = makeJs(values, minDay, maxDay, str(nowNext).split(' ')[0])
         with open(f"/tmp/kk.js", 'w') as f:
             f.write(js)
