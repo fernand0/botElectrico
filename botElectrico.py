@@ -103,13 +103,14 @@ def makeTable(values, minDay, maxDay):
     hh = 0
     # text = "<table>"
     text = ""
+    print(f"Values: {values}")
     for i, val in enumerate(values):
         if i - 1 >= 0:
             prevVal = values[i-1]
         else:
             prevVal = 1000 #FIXME
         text = (f"{text}|") 
-        text = (f"{clock[hh % 12]} "
+        textt = (f"{clock[hh % 12]} "
                 f"{nextSymbol(val, prevVal)} {val:.3f}"
                 f" ({hh:02}:00)")
         color = ''
@@ -118,7 +119,8 @@ def makeTable(values, minDay, maxDay):
         if i == minDay[0]:
             color = 'MediumSeaGreen'
         if color:
-            text = f"<span style='border:2px solid {color};'>{text}</span>"
+            textt = f"<span style='border:2px solid {color};'>{text}</span>"
+        text = f"{text}{textt}"
         if (hh % 4 == 3):
             text = f"{text} | \n"
         hh = hh + 1
@@ -460,10 +462,8 @@ def main():
 
     if mode == 'test':
         dsts = {
-                "mastodon": "@fernand0@mastodon.social",
                 "twitter": "fernand0Test",
-                "telegram": "testFernand0",
-                "blsk": "botElectrico.bsky.social"
+                "telegram": "testFernand0"
                }
     else:
         dsts = {
@@ -480,7 +480,7 @@ def main():
         logging.info(f"Destination: {dst}")
         api = getApi(dst, dsts[dst])
 
-        if now.hour == timeGraph:
+        if hh == timeGraph:
             dateP = str(now).split(' ')[0]
             dateS = str(now + datetime.timedelta(days=1)).split(' ')[0]
             msgTitle = f"Evolución precio para el día {dateS}"
