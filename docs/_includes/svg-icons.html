@@ -1,0 +1,9 @@
+Se puede seguir esta información en las siguientes redes sociales:
+
+
+<ul>
+{% if site.footer-links.twitter %} <li> {% include svg-icons/x.html %} X (Twitter): <a target="_blank" href="https://twitter.com/{{ site.footer-links.twitter }}" class="u-url url" rel="me">https://twitter.com/{{ site.footer-links.twitter }}</a></li>{% endif %}
+{% if site.footer-links.telegram %} <li> {% include svg-icons/telegram.html %} Telegram: <a target="_blank" href="https://t.me/{{ site.footer-links.twitter }}" class="u-url url" rel="me">https://t.me/{{ site.footer-links.twitter }}</a></li>{% endif %}
+{% if site.footer-links.mastodon %} <li> {% include svg-icons/mastodon.html %} Mastodon: <a target="_blank" href="{{ site.footer-links.mastodon }}" class="u-url url" rel="me">{{ site.footer-links.mastodon }}</a></li>{% endif %}
+{% if site.footer-links.bluesky %} <li> <div width="16">{% include svg-icons/bluesky.html %} Bluesky: <a target="_blank" href="https://bsky.app/profile/{{ site.footer-links.bluesky }}.bsky.social" class="u-url url" rel="me">https://bsky.app/profile/{{ site.footer-links.bluesky }}.bsky.social</a></li>{% endif %}
+</ul>

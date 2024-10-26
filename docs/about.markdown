@@ -8,8 +8,11 @@ Esta página se actualiza cada noche (alrededor de las 21:00) y muestra la evolu
 
 Además se puede seguir esta información en las siguientes redes sociaes:
 
+{% include svg-icons.html %}
 
+<!--
 * Twitter: [@botElectrico](https://twitter.com/botElectrico). Últimamente con fallos frecuentes.
 * Telegram: [botElectrico](https://t.me/botElectrico)
 * Fediverso: [@botElectrico](https://botsin.space/@botElectrico)
 * Página de Facebok: [botElectrico](https://www.facebook.com/botElectrico)
+-->

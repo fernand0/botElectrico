@@ -32,6 +32,22 @@ github_username:  fernand0
 theme: minima
 plugins:
   - jekyll-feed
+# Includes an icon in the footer for each username you enter
+footer-links:
+  email: fernand0+botElectrico@elmundoesimperfecto.com
+# facebook: fernando.tricas
+# flickr: fernand0
+  github: fernand0/botElectrico
+  instagram:
+  linkedin:
+  pinterest: 
+  rss:  feed.xml # https://github.com/snaptortoise/jekyll-rss-feeds
+  twitter: fernand0
+  mastodon: https://botsin.space/@botElectrico
+  telegram: botElectrico
+  bluesky: botElectrico
+#  stackoverflow: users/5671682/fernand0 # your stackoverflow profile, e.g. "users/50476/bart-kiers"
+
 
 # Exclude from processing.
 # The following items will not be processed, by default.
