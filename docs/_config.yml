@@ -26,26 +26,29 @@ baseurl: "/" # the subpath of your site, e.g. /blog
 url: "" # the base hostname & protocol for your site, e.g. http://example.com
 twitter_username: botElectrico
 github_username:  fernand0
+author: fernand0
+paginate: 30
 # theme: THEME-NAME
 
 # Build settings
 # theme: minima
 plugins:
   - jekyll-feed
+  - jekyll-paginate
 # Includes an icon in the footer for each username you enter
 footer-links:
-  email: fernand0+botElectrico@elmundoesimperfecto.com
+  email: mailto:fernand0+botElectrico@elmundoesimperfecto.com
 # facebook: fernando.tricas
 # flickr: fernand0
   github: fernand0/botElectrico
   instagram:
   linkedin:
-  pinterest: 
+  pinterest:
   rss:  feed.xml # https://github.com/snaptortoise/jekyll-rss-feeds
-  twitter: fernand0
+  x: botElectrico
   mastodon: https://botsin.space/@botElectrico
-  telegram: botElectrico
-  bluesky: botElectrico
+  telegram: https://t.me/botElectrico
+  bluesky: https://bsky.app/profile/botElectrico.bsky.social
 #  stackoverflow: users/5671682/fernand0 # your stackoverflow profile, e.g. "users/50476/bart-kiers"
 
 

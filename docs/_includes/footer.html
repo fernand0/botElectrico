@@ -17,20 +17,9 @@
           {% if site.author.name -%}
             <li class="p-name">{{ site.author.name | escape }}</li>
           {% endif -%}
-          {% if site.footer-links.email -%}
-            <li><a class="u-email" href="mailto:{{ site.footer-links.email }}">{{ site.author.email }}</a></li>
-          {%- endif %}
-          {% if site.footer-links.github -%}
-            <li><a class="u-github" href="mailto:{{ site.footer-links.github }}">{{ site.footer-links.github }}</a></li>
-          {%- endif %}
-          {% if site.footer-links.mastodon -%}
-            <li><a class="u-github" href="mailto:{{ site.footer-links.mastodon }}">{{ site.footer-links.mastodon }}</a></li>
-          {%- endif %}
-          {% if site.footer-links.twitter -%}
-            <li><a class="u-github" href="mailto:{{ site.footer-links.twitter }}">{{ site.footer-links.twitter }}</a></li>
-          {%- endif %}
         </ul>
       {%- endif %}
+
       </div>
       <div class="footer-col">
         <p>{{ site.description | escape }}</p>

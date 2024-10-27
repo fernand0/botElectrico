@@ -1,5 +1,18 @@
 <ul class="social-media-list">
-{%- for entry in site.minima.social_links -%}
-  {%- include social-item.html item = entry -%}
+{%- for item in site.footer-links | sort -%}
+	{%- if item[1] and item[0] != 'rss'-%}
+<li>
+	{%- if item[1] contains 'http' or item[1] contains 'mailto' -%}
+  <a {% unless item[0] == 'rss' %}rel="me" {% endunless %}href="{{ item[1] }}" target="_blank" title="{{ item[0] }}">
+	{%- else -%}
+  <a {% unless item[0] == 'rss' %}rel="me" {% endunless %}href="https://{{ item[0] }}.com/{{ item[1] }}" target="_blank" title="{{ item[0] }}">
+	{%- endif -%}
+    <svg class="svg-icon grey">
+      <use xlink:href="{{ '/assets/minima-social-icons.svg#' | append: item[0] | item[1] }}"></use>
+    </svg>
+  </a>
+</li>
+  {%- endif -%}
+
 {%- endfor -%}
 </ul>

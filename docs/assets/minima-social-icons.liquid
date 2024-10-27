@@ -8,8 +8,8 @@ permalink: /assets/minima-social-icons.svg
   unless the platform is "rss" because we need the "rss" symbol for the `Subscribe` link
   in the footer and therefore inject the "rss" icon outside the iteration loop.
 {% endcomment %}
-{% for entry in site.social_links %}
-  {%- assign symbol_id = entry.platform -%}
+{% for entry in site.footer-links %}
+  {%- assign symbol_id = entry[0] -%}
   {%- unless symbol_id == "rss" -%}
     {%- include svg_symbol.html key = symbol_id -%}
   {% endunless %}
