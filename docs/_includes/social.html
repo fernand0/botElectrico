@@ -1,6 +1,6 @@
 <ul class="social-media-list">
 {%- for item in site.footer-links | sort -%}
-	{%- if item[1] and item[0] != 'rss'-%}
+	{%- if item[1] and item[0] != 'rss' and item[0] != 'url' -%}
 <li>
 	{%- if item[1] contains 'http' or item[1] contains 'mailto' -%}
   <a {% unless item[0] == 'rss' %}rel="me" {% endunless %}href="{{ item[1] }}" target="_blank" title="{{ item[0] }}">
