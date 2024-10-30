@@ -235,6 +235,7 @@ def graficaDiaPlot(data):
     values=[float(val['PCB'].replace(',','.'))/1000
             for val in data["PVPC"]]
 
+    csv = "Hour,Value\n"
     for i, value in enumerate(values):
         csv = f"{csv}{i},{value}\n"
     
@@ -247,7 +248,7 @@ def graficaDiaPlot(data):
     )
     
     with open('/tmp/plotly_graph.html', 'w') as f:
-        f.write(fig.to_html(include_plotlyjs='cdn'))
+        f.write(fig.to_html(include_plotlyjs='cdn', full_html=False))
     
     with open('/tmp/plotly_graph.png', 'wb') as f:
         f.write(fig.to_image(format='png'))
@@ -445,10 +446,7 @@ def main():
                                                                 nowNext,
                                                                 delta,
                                                                 dataNext)
-        try:
-            graficaDiaPlot(data)
-        except:
-            print("Some problem")
+        graficaDiaPlot(data)
         table = makeTable(values, minDay, maxDay)
         js = makeJs(values, minDay, maxDay, str(nowNext).split(' ')[0])
         with open(f"/tmp/kk.js", 'w') as f:
