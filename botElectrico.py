@@ -4,6 +4,7 @@ import datetime
 import getpass
 import json
 import logging
+import os
 import requests
 import sys
 
@@ -227,11 +228,33 @@ def makeJs(values, minDay, maxDay, nowNext):
 
    return program
 
-def graficaDia(now, delta):
+def graficaDiaPlot(data):
+    from plotly import express as px
+    import pandas as pd
 
-    nowNext = now + datetime.timedelta(hours=delta)
-    data = getData(nowNext)
-    # create data
+    values=[float(val['PCB'].replace(',','.'))/1000
+            for val in data["PVPC"]]
+
+    for i, value in enumerate(values):
+        csv = f"{csv}{i},{value}\n"
+    
+    import io
+    df = pd.read_csv(io.StringIO(csv))
+    
+    fig = px.line(
+            df, x='Hour', y='Value',
+            title = "PVPC. Evolución precio para el día 2024-10-30"
+    )
+    
+    with open('/tmp/plotly_graph.html', 'w') as f:
+        f.write(fig.to_html(include_plotlyjs='cdn'))
+    
+    with open('/tmp/plotly_graph.png', 'wb') as f:
+        f.write(fig.to_image(format='png'))
+
+
+def graficaDia(now, nowNext, delta, data):
+
     values=[float(val['PCB'].replace(',','.'))/1000
             for val in data["PVPC"]]
             #for val in data["included"][0]["attributes"]["values"]]
@@ -415,7 +438,17 @@ def main():
 
     timeGraph = 21
     if hh == timeGraph:
-        nameGraph, minDay, maxDay, values, nowNext = graficaDia(now, 24 - timeGraph)
+        delta = 24 - timeGraph
+        nowNext = now + datetime.timedelta(hours=delta)
+        dataNext = getData(nowNext)
+        nameGraph, minDay, maxDay, values, nowNext = graficaDia(now, 
+                                                                nowNext,
+                                                                delta,
+                                                                dataNext)
+        try:
+            graficaDiaPlot(data)
+        except:
+            print("Some problem")
         table = makeTable(values, minDay, maxDay)
         js = makeJs(values, minDay, maxDay, str(nowNext).split(' ')[0])
         with open(f"/tmp/kk.js", 'w') as f:
@@ -500,8 +533,14 @@ def main():
                 posWidth = imageSvg.find("width")
                 posViewBox = imageSvg.find("viewBox")
                 imageSvg = imageSvg[:posWidth]+imageSvg[posViewBox:]
+                imagePlot = ""
+                if os.path.exists('/tmp/plotly_graph.html'):
+                    with open('/tmp/plotly_graph.html', 'r') as f: 
+                        imagePlot = f.read()
+
                 msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
                              f"{imageSvg}\n"
+                             f"{imagePlot}\n"
                              # f"![Gráfica de la evolución del precio para el
                              # día " f"{dateS}]({imgUrl})\n\n"
                              f"\n{table}\n")
