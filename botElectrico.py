@@ -447,7 +447,6 @@ def main():
                                                                 delta,
                                                                 dataNext)
         graficaDiaPlot(dataNext)
-        return
         table = makeTable(values, minDay, maxDay)
         js = makeJs(values, minDay, maxDay, str(nowNext).split(' ')[0])
         with open(f"/tmp/kk.js", 'w') as f:
