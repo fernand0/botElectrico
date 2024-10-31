@@ -228,7 +228,7 @@ def makeJs(values, minDay, maxDay, nowNext):
 
    return program
 
-def graficaDiaPlot(data):
+def graficaDiaPlot(data, nowNext):
     from plotly import express as px
     import pandas as pd
 
@@ -244,7 +244,8 @@ def graficaDiaPlot(data):
     
     fig = px.line(
             df, x='Hour', y='Value',
-            title = "PVPC. Evolución precio para el día 2024-10-30"
+            title = (f"PVPC. Evolución precio para el día " 
+                     f"{str(nowNext).split(' ')[0]}")
     )
     
     with open('/tmp/plotly_graph.html', 'w') as f:
