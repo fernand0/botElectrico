@@ -235,7 +235,12 @@ def graficaDiaPlot(data, nowNext):
     values=[float(val['PCB'].replace(',','.'))/1000
             for val in data["PVPC"]]
 
-    csv = "Hour,Value\n"
+    ymax = max(values)
+    xpos = values.index(ymax)
+    ymin = min(values)
+    ypos = values.index(ymin)
+
+    csv = "Hora,Precio\n"
     for i, value in enumerate(values):
         csv = f"{csv}{i},{value}\n"
     
@@ -243,10 +248,37 @@ def graficaDiaPlot(data, nowNext):
     df = pd.read_csv(io.StringIO(csv))
     
     fig = px.line(
-            df, x='Hour', y='Value',
-            title = (f"PVPC. Evolución precio para el día " 
+            df, x='Hora', y='Precio', markers=True,
+            title = (f"[@botElectrico] PVPC. Evolución precio para el día "
                      f"{str(nowNext).split(' ')[0]}")
     )
+    fig.add_annotation(
+        x=xpos,
+        y=ymax,
+        text=ymax,
+        font = dict(
+            color="#ffffff"
+            ),
+        bgcolor="tomato",
+        arrowcolor="tomato",
+        showarrow=True,
+        xanchor="right",
+    )
+    fig.add_annotation(
+        x=ypos,
+        y=ymin,
+        text=ymin,
+        arrowcolor="MediumSeaGreen",
+        font = dict(
+            color="#ffffff",
+            ),
+        bgcolor="MediumSeaGreen",
+        showarrow=True,
+        xanchor="left",
+        startarrowsize=5,
+    )
+
+
     
     with open('/tmp/plotly_graph.html', 'w') as f:
         f.write(fig.to_html(include_plotlyjs='cdn', full_html=False))
@@ -447,7 +479,7 @@ def main():
                                                                 nowNext,
                                                                 delta,
                                                                 dataNext)
-        graficaDiaPlot(dataNext)
+        graficaDiaPlot(dataNext, nowNext)
         table = makeTable(values, minDay, maxDay)
         js = makeJs(values, minDay, maxDay, str(nowNext).split(' ')[0])
         with open(f"/tmp/kk.js", 'w') as f:
