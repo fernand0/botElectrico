@@ -16,16 +16,16 @@ from socialModules.configMod import *
 
 apiBase = "https://apidatos.ree.es/"
 
-clock = ['🕛', '🕐', '🕑', '🕒', '🕓', '🕔', 
+clock = ['🕛', '🕐', '🕑', '🕒', '🕓', '🕔',
          '🕕', '🕖', '🕗', '🕘', '🕙', '🕚']
 
 ranges = {
-        "llano1": ["08:00", "10:00"], 
-        "punta1": ["10:00", "14:00"], 
-        "llano2": ["14:00", "18:00"], 
-        "punta2": ["18:00", "22:00"], 
-        "llano3": ["22:00", "24:00"], 
-        "valle":  ["00:00", "8:00"] 
+        "llano1": ["08:00", "10:00"],
+        "punta1": ["10:00", "14:00"],
+        "llano2": ["14:00", "18:00"],
+        "punta2": ["18:00", "22:00"],
+        "llano3": ["22:00", "24:00"],
+        "valle":  ["00:00", "8:00"]
         }
 
 button = {"llano": "🟠", "valle": "🟢", "punta": "🔴"}
@@ -110,7 +110,7 @@ def makeTable(values, minDay, maxDay):
             prevVal = values[i-1]
         else:
             prevVal = 1000 #FIXME
-        text = (f"{text}|") 
+        text = (f"{text}|")
         textt = (f"{clock[hh % 12]} ({hh:02}:00)"
                 f"{nextSymbol(val, prevVal)} {val:.3f}"
                 )
@@ -135,16 +135,16 @@ def makeJs(values, minDay, maxDay, nowNext):
    program = """
    import Chart from 'chart.js/auto'
    import annotationPlugin from 'chartjs-plugin-annotation';
-    
+
    Chart.register(annotationPlugin);
-    
+
    (async function() {
 
     const data = [
     """
    for i,val in enumerate(values):
         program = f"{program}\n{{hour: {i}, pvpc: {values[i]} }},"
-        
+
    program = f"{program}\n ,];\n\n"
 
    program = f"""{program}
@@ -183,7 +183,7 @@ def makeJs(values, minDay, maxDay, nowNext):
 		     textAlign: 'start',
 	     	     callout: {{
             	         display: true,
-            	         side: 10 
+            	         side: 10
                  }}
          }},
 	     point2: {{
@@ -204,7 +204,7 @@ def makeJs(values, minDay, maxDay, nowNext):
 		     textAlign: 'start',
 	     	     callout: {{
             	         display: true,
-            	         side: 10 
+            	         side: 10
                  }}
          }}
         }}
@@ -235,18 +235,18 @@ def graficaDiaPlot(data, nowNext):
     values=[float(val['PCB'].replace(',','.'))/1000
             for val in data["PVPC"]]
 
-    ymax = max(values)
+    ymax = f"{max(values):.3f}"
     xpos = values.index(ymax)
-    ymin = min(values)
+    ymin = f"{min(values):.3f}"
     ypos = values.index(ymin)
 
     csv = "Hora,Precio\n"
     for i, value in enumerate(values):
         csv = f"{csv}{i},{value}\n"
-    
+
     import io
     df = pd.read_csv(io.StringIO(csv))
-    
+
     fig = px.line(
             df, x='Hora', y='Precio', markers=True,
             title = (f"[@botElectrico] PVPC. Evolución precio para el día "
@@ -279,10 +279,10 @@ def graficaDiaPlot(data, nowNext):
     )
 
 
-    
+
     with open('/tmp/plotly_graph.html', 'w') as f:
         f.write(fig.to_html(include_plotlyjs='cdn', full_html=False))
-    
+
     with open('/tmp/plotly_graph.png', 'wb') as f:
         f.write(fig.to_image(format='png'))
 
@@ -475,7 +475,7 @@ def main():
         delta = 24 - timeGraph
         nowNext = now + datetime.timedelta(hours=delta)
         dataNext = getData(nowNext)
-        nameGraph, minDay, maxDay, values, nowNext = graficaDia(now, 
+        nameGraph, minDay, maxDay, values, nowNext = graficaDia(now,
                                                                 nowNext,
                                                                 delta,
                                                                 dataNext)
@@ -566,7 +566,7 @@ def main():
                 imageSvg = imageSvg[:posWidth]+imageSvg[posViewBox:]
                 imagePlot = ""
                 if os.path.exists('/tmp/plotly_graph.html'):
-                    with open('/tmp/plotly_graph.html', 'r') as f: 
+                    with open('/tmp/plotly_graph.html', 'r') as f:
                         imagePlot = f.read()
 
                 msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
@@ -590,14 +590,14 @@ def main():
             else:
                 try:
                     res = api.publishImage(msgTitle, nameGraph, alt=msgAlt)
-                    if hasattr(api, 'lastRes'): 
+                    if hasattr(api, 'lastRes'):
                         lastRes = api.lastRes
                     else:
                         lastRes = None
 
-                    if (lastRes 
+                    if (lastRes
                         and ('media_attachments' in api.lastRes)
-                        and (len(api.lastRes['media_attachments']) >0) 
+                        and (len(api.lastRes['media_attachments']) >0)
                         and ('url' in api.lastRes['media_attachments'][0])):
                         imgUrl = api.lastRes['media_attachments'][0]['url']
                 except:
