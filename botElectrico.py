@@ -235,10 +235,12 @@ def graficaDiaPlot(data, nowNext):
     values=[float(val['PCB'].replace(',','.'))/1000
             for val in data["PVPC"]]
 
-    ymax = f"{max(values):.3f}"
+    ymax = max(values)
     xpos = values.index(ymax)
-    ymin = f"{min(values):.3f}"
+    ymax = f"{max(values):.3f}"
+    ymin = min(values)
     ypos = values.index(ymin)
+    ymin = f"{min(values):.3f}"
 
     csv = "Hora,Precio\n"
     for i, value in enumerate(values):
@@ -471,6 +473,7 @@ def main():
     msgBase1 = f"{msgBase1} periodo {frameType}"
 
     timeGraph = 21
+    hh = 21
     if hh == timeGraph:
         delta = 24 - timeGraph
         nowNext = now + datetime.timedelta(hours=delta)
@@ -589,7 +592,8 @@ def main():
                 res = api.publishImage(msgMedium, nameGraph, alt=msgAlt)
             else:
                 try:
-                    res = api.publishImage(msgTitle, nameGraph, alt=msgAlt)
+                    res = ""
+                    # res = api.publishImage(msgTitle, nameGraph, alt=msgAlt)
                     if hasattr(api, 'lastRes'):
                         lastRes = api.lastRes
                     else:
