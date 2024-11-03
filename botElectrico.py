@@ -473,7 +473,6 @@ def main():
     msgBase1 = f"{msgBase1} periodo {frameType}"
 
     timeGraph = 21
-    hh = 21
     if hh == timeGraph:
         delta = 24 - timeGraph
         nowNext = now + datetime.timedelta(hours=delta)
@@ -592,8 +591,7 @@ def main():
                 res = api.publishImage(msgMedium, nameGraph, alt=msgAlt)
             else:
                 try:
-                    res = ""
-                    # res = api.publishImage(msgTitle, nameGraph, alt=msgAlt)
+                    res = api.publishImage(msgTitle, nameGraph, alt=msgAlt)
                     if hasattr(api, 'lastRes'):
                         lastRes = api.lastRes
                     else:
