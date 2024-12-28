@@ -345,7 +345,7 @@ def main():
         dsts = {
                 "twitter": "botElectrico",
                 "telegram": "botElectrico",
-                "mastodon": "@botElectrico@botsin.space",
+                "mastodon": "@botElectrico@mas.to",
                 "facebook": "BotElectrico",
                 "medium": "botElectrico"
                 }
