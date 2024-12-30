@@ -37,12 +37,12 @@ def nameFile(now):
 def getData(now):
     #print(now)
     name = f"{nameFile(now)}_data.json"
-    logging.info(name)
+    logging.debug(f"File: {name}")
     if os.path.exists(name):
         logging.info("Cached")
         data=json.loads(open(name).read())
     else:
-        logging.info("Downloading")
+        logging.debug("Downloading")
         # https://pybonacci.org/2020/05/12/demanda-electrica-en-espana-durante-el-confinamiento-covid-19-visto-con-python/
         # https://api.esios.ree.es/
         # https://www.ree.es/es/apidatos
@@ -104,7 +104,7 @@ def makeTable(values, minDay, maxDay):
     hh = 0
     # text = "<table>"
     text = ""
-    print(f"Values: {values}")
+    logging.debug(f"Values: {values}")
     for i, val in enumerate(values):
         if i - 1 >= 0:
             prevVal = values[i-1]
@@ -280,14 +280,11 @@ def graficaDiaPlot(data, nowNext):
         startarrowsize=5,
     )
 
-
-
     with open('/tmp/plotly_graph.html', 'w') as f:
         f.write(fig.to_html(include_plotlyjs='cdn', full_html=False))
 
     with open('/tmp/plotly_graph.png', 'wb') as f:
         f.write(fig.to_image(format='png'))
-
 
 def graficaDia(now, nowNext, delta, data):
 
@@ -339,7 +336,6 @@ def graficaDia(now, nowNext, delta, data):
     name2 = f"{nameFile(nowNext)}_image.svg"
     plt.savefig(name2)
 
-
     return name, minDay, maxDay, values, nowNext
 
 def masBarato(data, hours):
@@ -348,7 +344,7 @@ def masBarato(data, hours):
     if endH == '00':
         endH = '24'
 
-    logging.info(f"start: {startH}, {endH}")
+    logging.debug(f"Start: {startH}, {endH}")
     # print(data)
     values=[float(val['PCB'].replace(',','.'))/1000
             for val in data["PVPC"]]
@@ -369,13 +365,13 @@ def masBarato(data, hours):
             minV = hour
             minI = startH + i
             hourMin = hour
-    logging.info(f"Max {maxV} {maxI}")
-    logging.info(f"Min {minV} {minI}")
+    logging.debug(f"Max: {maxV} {maxI}")
+    logging.debug(f"Min: {minV} {minI}")
     return((minI, hourMin), (maxI, hourMax))
 
 def getPrices(data, hh):
     pos = int(hh)
-    logging.info(f"Position: {pos}")
+    logging.debug(f"Position: {pos}")
 
     prize = data["PVPC"][pos]["PCB"]
 
@@ -403,7 +399,7 @@ def checkTimeFrame(ranges, now, dd):
         for typeH in ranges:
             start = convertToDatetime(ranges[typeH][0])
             end = convertToDatetime(ranges[typeH][1])
-            logging.info(f"Now: {now} Start:{start} End: {end}")
+            logging.debug(f"Now: {now} Start:{start} End: {end}")
 
             frame = ranges[typeH]
             if ((start <= now) and (now < end)):
@@ -430,7 +426,7 @@ def main():
                 now = convertToDatetime(sys.argv[2])
 
     logging.basicConfig(
-            stream=sys.stdout, level=logging.DEBUG,
+            stream=sys.stdout, level=logging.INFO,
             format="%(asctime)s %(message)s"
             )
 
@@ -461,7 +457,7 @@ def main():
     minData, maxData = masBarato(data, frame)
 
     if minData:
-        logging.info(f"minData: {minData}")
+        logging.debug(f"minData: {minData}")
         timeMin = minData[0]
         timeMax = maxData[0]
 
@@ -543,7 +539,7 @@ def main():
 
     imgUrl = ''
     for dst in dsts:
-        logging.info(f"Destination: {dst}")
+        logging.info(f"Destination: {dsts[dst]}@{dst}")
         api = getApi(dst, dsts[dst])
 
         if hh == timeGraph:
@@ -559,57 +555,53 @@ def main():
                          f"date:   {dateP} 21:00:59 +0200\n"
                          "categories: jekyll update\n"
                          "---")
-            if imgUrl:
-                with open(f"{nameGraph[:-4]}.svg", 'r') as f:
-                    imageSvg = f.read()
-                imageSvg = imageSvg[imageSvg.find('<svg'):]
-                posWidth = imageSvg.find("width")
-                posViewBox = imageSvg.find("viewBox")
-                imageSvg = imageSvg[:posWidth]+imageSvg[posViewBox:]
-                imagePlot = ""
-                if os.path.exists('/tmp/plotly_graph.html'):
-                    with open('/tmp/plotly_graph.html', 'r') as f:
-                        imagePlot = f.read()
+            with open(f"{nameGraph[:-4]}.svg", 'r') as f:
+                imageSvg = f.read()
+            imageSvg = imageSvg[imageSvg.find('<svg'):]
+            posWidth = imageSvg.find("width")
+            posViewBox = imageSvg.find("viewBox")
+            imageSvg = imageSvg[:posWidth]+imageSvg[posViewBox:]
+            imagePlot = ""
+            if os.path.exists('/tmp/plotly_graph.html'):
+                with open('/tmp/plotly_graph.html', 'r') as f:
+                    imagePlot = f.read()
 
-                msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
-                             f"{imageSvg}\n"
-                             f"{imagePlot}\n"
-                             # f"![Gráfica de la evolución del precio para el
-                             # día " f"{dateS}]({imgUrl})\n\n"
-                             f"\n{table}\n")
-            else:
-                msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
-                         f"![Gráfica de la evolución del precio para el día "
-                         f"{dateS}](url)\n\n"
+            msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
+                         f"{imageSvg}\n"
+                         f"{imagePlot}\n"
+                         # f"![Gráfica de la evolución del precio para el
+                         # día " f"{dateS}]({imgUrl})\n\n"
                          f"\n{table}\n")
+            # else:
+            #     msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
+            #              f"![Gráfica de la evolución del precio para el día "
+            #              f"{dateS}](url)\n\n"
+            #              f"\n{table}\n")
 
             msgTitle = (f"{msgTitle}\n{msgMin}{msgMax}\n")
                          #f"\n{table}\n")
             with open(f"{nameFile(now)}-post.md", 'w') as f:
                       f.write(msgMedium)
-            if dst == 'medium':
-                res = api.publishImage(msgMedium, nameGraph, alt=msgAlt)
-            else:
-                try:
-                    res = api.publishImage(msgTitle, nameGraph, alt=msgAlt)
-                    if hasattr(api, 'lastRes'):
-                        lastRes = api.lastRes
-                    else:
-                        lastRes = None
+            try:
+                res = api.publishImage(msgTitle, nameGraph, alt=msgAlt)
+                if hasattr(api, 'lastRes'):
+                    lastRes = api.lastRes
+                else:
+                    lastRes = None
 
-                    if (lastRes
-                        and ('media_attachments' in api.lastRes)
-                        and (len(api.lastRes['media_attachments']) >0)
-                        and ('url' in api.lastRes['media_attachments'][0])):
-                        imgUrl = api.lastRes['media_attachments'][0]['url']
-                except:
-                    logging.info(f"Fail!")
+                if (lastRes
+                    and ('media_attachments' in api.lastRes)
+                    and (len(api.lastRes['media_attachments']) >0)
+                    and ('url' in api.lastRes['media_attachments'][0])):
+                    imgUrl = api.lastRes['media_attachments'][0]['url']
+            except:
+                res = 'Fail!'
+                logging.info(f"Fail!") 
 
-        if dst != 'medium':
-            res = api.publishPost(msg, "", "")
-            print(res)
 
-        print(res)
+        res = api.publishPost(msg, "", "")
+
+        logging.info(f"Res: {res}")
 
 if __name__ == "__main__":
     main()
