@@ -1,1 +1,23 @@
-{"data":{"type":"Precios mercado peninsular en tiempo real","id":"mer13","attributes":{"title":"Precios mercado peninsular en tiempo real","last-update":"2025-03-12T12:55:56.000+01:00","description":null},"meta":{"cache-control":{"cache":"HIT","expireAt":"2025-03-13T13:00:01"}}},"included":[{"type":"Precio mercado spot","id":"600","groupId":null,"attributes":{"title":"Precio mercado spot","description":null,"color":"#df4a32","icon":null,"type":null,"magnitude":"price","composite":false,"last-update":"2025-03-12T12:55:56.000+01:00","values":[{"value":108.58,"percentage":1,"datetime":"2025-03-13T00:00:00.000+01:00"},{"value":103.46,"percentage":1,"datetime":"2025-03-13T01:00:00.000+01:00"},{"value":101.25,"percentage":1,"datetime":"2025-03-13T02:00:00.000+01:00"},{"value":95.12,"percentage":1,"datetime":"2025-03-13T03:00:00.000+01:00"},{"value":90.8,"percentage":1,"datetime":"2025-03-13T04:00:00.000+01:00"},{"value":99,"percentage":1,"datetime":"2025-03-13T05:00:00.000+01:00"},{"value":110.01,"percentage":1,"datetime":"2025-03-13T06:00:00.000+01:00"},{"value":152.28,"percentage":1,"datetime":"2025-03-13T07:00:00.000+01:00"},{"value":156.41,"percentage":1,"datetime":"2025-03-13T08:00:00.000+01:00"},{"value":140,"percentage":1,"datetime":"2025-03-13T09:00:00.000+01:00"},{"value":117.56,"percentage":1,"datetime":"2025-03-13T10:00:00.000+01:00"},{"value":110.54,"percentage":1,"datetime":"2025-03-13T11:00:00.000+01:00"},{"value":102.75,"percentage":1,"datetime":"2025-03-13T12:00:00.000+01:00"},{"value":95.12,"percentage":1,"datetime":"2025-03-13T13:00:00.000+01:00"},{"value":92.38,"percentage":1,"datetime":"2025-03-13T14:00:00.000+01:00"},{"value":92.47,"percentage":1,"datetime":"2025-03-13T15:00:00.000+01:00"},{"value":92.38,"percentage":1,"datetime":"2025-03-13T16:00:00.000+01:00"},{"value":92.47,"percentage":1,"datetime":"2025-03-13T17:00:00.000+01:00"},{"value":107.1,"percentage":1,"datetime":"2025-03-13T18:00:00.000+01:00"},{"value":160.86,"percentage":1,"datetime":"2025-03-13T19:00:00.000+01:00"},{"value":149,"percentage":1,"datetime":"2025-03-13T20:00:00.000+01:00"},{"value":126.51,"percentage":1,"datetime":"2025-03-13T21:00:00.000+01:00"},{"value":103.5,"percentage":1,"datetime":"2025-03-13T22:00:00.000+01:00"},{"value":81.9,"percentage":1,"datetime":"2025-03-13T23:00:00.000+01:00"}]}}]}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="robots" content="noindex,nofollow,noarchive" />
+    <title>An Error Occurred: Internal Server Error</title>
+    <style>body { background-color: #fff; color: #222; font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; }
+.container { margin: 30px; max-width: 600px; }
+h1 { color: #dc3545; font-size: 24px; }
+h2 { font-size: 18px; }</style>
+</head>
+<body>
+<div class="container">
+    <h1>Oops! An Error Occurred</h1>
+    <h2>The server returned a "500 Internal Server Error".</h2>
+
+    <p>
+        Something is broken. Please let us know what you were doing when this error occurred.
+        We will fix it as soon as possible. Sorry for any inconvenience caused.
+    </p>
+</div>
+<script type="text/javascript" src="/_Incapsula_Resource?SWJIYLWA=719d34d31c8e3a6e6fffd425f7e032f3&ns=1&cb=1365573255" async></script></body>
+</html>
