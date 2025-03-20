@@ -59,6 +59,7 @@ def getData(now):
         data = None
         while not data:
             result = requests.get(urlPrecio)
+            print(result.content)
             data = json.loads(result.content)
             if (('errors' not in data) and
                 ('PVPC' in data)):
@@ -283,8 +284,8 @@ def graficaDiaPlot(data, nowNext):
     with open('/tmp/plotly_graph.html', 'w') as f:
         f.write(fig.to_html(include_plotlyjs='cdn', full_html=False))
 
-    with open('/tmp/plotly_graph.png', 'wb') as f:
-        f.write(fig.to_image(format='png'))
+    # with open('/tmp/plotly_graph.png', 'wb') as f:
+    #     f.write(fig.to_image(format='png'))
 
 def graficaDia(now, nowNext, delta, data):
 
@@ -478,6 +479,7 @@ def main():
                                                                 delta,
                                                                 dataNext)
         graficaDiaPlot(dataNext, nowNext)
+        print("holaa")
         table = makeTable(values, minDay, maxDay)
         js = makeJs(values, minDay, maxDay, str(nowNext).split(' ')[0])
         with open(f"/tmp/kk.js", 'w') as f:
