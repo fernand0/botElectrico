@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import argparse
 import datetime
 import json
 import logging
@@ -32,6 +33,14 @@ logging.basicConfig(
     stream=sys.stdout, level=logging.INFO, format="%(asctime)s %(message)s"
 )
 
+def parse_arguments():
+    """Analiza los argumentos de línea de comandos."""
+    parser = argparse.ArgumentParser(description="Procesa argumentos para el script.")
+
+    parser.add_argument("-s", action="store_true", help="Activa el modo de simulación.")
+    parser.add_argument("-t", nargs="?", const="21:00", help="Establece la hora (formato HH:MM).")
+
+    return parser.parse_args()
 
 def get_cached_data(filepath):
     """Retrieves data from a cached file."""
@@ -169,7 +178,9 @@ def generate_message(now, data, time_frame_info, min_max_prices):
     )
     message = f"{BUTTON_SYMBOLS[frame_name]} {'Empieza' if now.hour == start.hour else 'Estamos en'} periodo {frame_name} {range_msg}. Precios PVPC\n"
     message += f"En esta hora: {current_price:.3f}\nEn la hora siguiente: {next_price:.3f}{price_trend}\n"
-    if min_max_prices:
+    hour_time_frame_info = time_frame_info[0].hour
+    if (hour_time_frame_info == now.hour) and min_max_prices:
+        print("Síiii")
         min_hour, min_price = min_max_prices[0]
         max_hour, max_price = min_max_prices[1]
         message += f"Mín: {min_price:.3f}, entre las {min_hour}:00 y las {min_hour + 1}:00 (hora más económica)\n"
@@ -180,17 +191,23 @@ def generate_message(now, data, time_frame_info, min_max_prices):
 def main():
     mode = None
     now = None
-    if len(sys.argv) > 1:
-        if sys.argv[1] == "-t":
-            mode = "test"
-            if len(sys.argv) > 2:
-                now = convert_time_to_datetime(sys.argv[2])
+    # if len(sys.argv) > 1:
+    #     if sys.argv[1] == "-t":
+    #         mode = "test"
+    #         if len(sys.argv) > 2:
+    #             now = convert_time_to_datetime(sys.argv[2])
+    args = parse_arguments()
+    print(args)
 
-    if mode == "test":
-        if not now:
-            now = convert_time_to_datetime("21:00")
+    if args.s:
+        if args.t:
+            t_now = args.t
+        else:
+            t_now = "21:00" 
+        now = convert_time_to_datetime(t_now)
     elif not now:
         now = datetime.datetime.now()
+    print(f"Now: {now}")
 
     weekday = now.weekday()
     data = get_data(now)
@@ -207,10 +224,10 @@ def main():
         message = message[:280]
 
     destinations = {
-        "twitter": "fernand0Test" if mode == "test" else "botElectrico",
-        "telegram": "testFernand0" if mode == "test" else "botElectrico",
-        "mastodon": "@botElectrico@mas.to",
-        "blsk": "botElectrico.bsky.social",
+        "twitter": "fernand0Test" if args.s else "botElectrico",
+        "telegram": "testFernand0" if args.s else "botElectrico",
+        "mastodon": "@fernand0Test@fosstodon.org" if args.s else "@botElectrico@mas.to",
+        "blsk": None if args.s else "botElectrico.bsky.social",
     }
     logging.info(f"Destinations: {destinations}")
 
