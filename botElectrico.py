@@ -30,8 +30,6 @@ ranges = {
 
 button = {"llano": "🟠", "valle": "🟢", "punta": "🔴"}
 
->>>>>>> devel
-
 def nameFile(now):
     return f"/tmp/{now.year}-{now.month:0>2}-{now.day:0>2}"
 
