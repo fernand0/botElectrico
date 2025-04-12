@@ -180,7 +180,6 @@ def generate_message(now, data, time_frame_info, min_max_prices):
     message += f"En esta hora: {current_price:.3f}\nEn la hora siguiente: {next_price:.3f}{price_trend}\n"
     hour_time_frame_info = time_frame_info[0].hour
     if (hour_time_frame_info == now.hour) and min_max_prices:
-        print("Síiii")
         min_hour, min_price = min_max_prices[0]
         max_hour, max_price = min_max_prices[1]
         message += f"Mín: {min_price:.3f}, entre las {min_hour}:00 y las {min_hour + 1}:00 (hora más económica)\n"
