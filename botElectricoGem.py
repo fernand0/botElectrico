@@ -233,8 +233,9 @@ def main():
     for destination, account in destinations.items():
         logging.info(f"Destination: {account}@{destination}")
         api = getApi(destination, account)
-        result = api.publishPost(message, "", "")
-        logging.info(f"Result: {result}")
+        if api.getClient():
+            result = api.publishPost(message, "", "")
+            logging.info(f"Result: {result}")
 
 
 if __name__ == "__main__":
