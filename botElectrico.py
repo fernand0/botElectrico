@@ -4,11 +4,13 @@ import datetime
 import getpass
 import json
 import logging
+import os
+import requests
+import sys
+
 import matplotlib.pyplot as plt
 import matplotlib.ticker
 import matplotlib.patches as patches
-import requests
-import sys
 
 from socialModules.configMod import *
 
@@ -17,18 +19,31 @@ apiBase = "https://apidatos.ree.es/"
 clock = ['🕛', '🕐', '🕑', '🕒', '🕓', '🕔', 
          '🕕', '🕖', '🕗', '🕘', '🕙', '🕚']
 
+ranges = {
+        "llano1": ["08:00", "10:00"],
+        "punta1": ["10:00", "14:00"],
+        "llano2": ["14:00", "18:00"],
+        "punta2": ["18:00", "22:00"],
+        "llano3": ["22:00", "24:00"],
+        "valle":  ["00:00", "8:00"]
+        }
+
+button = {"llano": "🟠", "valle": "🟢", "punta": "🔴"}
+
+>>>>>>> devel
+
 def nameFile(now):
     return f"/tmp/{now.year}-{now.month:0>2}-{now.day:0>2}"
 
 def getData(now):
     #print(now)
     name = f"{nameFile(now)}_data.json"
-    logging.info(name)
+    logging.debug(f"File: {name}")
     if os.path.exists(name):
         logging.info("Cached")
         data=json.loads(open(name).read())
     else:
-        logging.info("Downloading")
+        logging.debug("Downloading")
         # https://pybonacci.org/2020/05/12/demanda-electrica-en-espana-durante-el-confinamiento-covid-19-visto-con-python/
         # https://api.esios.ree.es/
         # https://www.ree.es/es/apidatos
@@ -45,6 +60,7 @@ def getData(now):
         data = None
         while not data:
             result = requests.get(urlPrecio)
+            print(result.content)
             data = json.loads(result.content)
             if (('errors' not in data) and
                 ('PVPC' in data)):
@@ -86,37 +102,199 @@ def convertToDatetime(myTime):
 
     return converted
 
-def makeTable(values):
+def makeTable(values, minDay, maxDay):
     hh = 0
     # text = "<table>"
     text = ""
+    logging.debug(f"Values: {values}")
     for i, val in enumerate(values):
         if i - 1 >= 0:
             prevVal = values[i-1]
         else:
             prevVal = 1000 #FIXME
-        text = (f"{text}| {clock[hh % 12]} "
+        text = (f"{text}|")
+        textt = (f"{clock[hh % 12]} ({hh:02}:00)"
                 f"{nextSymbol(val, prevVal)} {val:.3f}"
-                f" ({hh:02}:00)")
+                )
+        color = ''
+        if i == maxDay[0]:
+            color = 'Tomato'
+        if i == minDay[0]:
+            color = 'MediumSeaGreen'
+        if color:
+            textt = f"<span style='border:2px solid {color};'>{textt}</span>"
+        text = f"{text}{textt}"
         if (hh % 4 == 3):
             text = f"{text} | \n"
         hh = hh + 1
     text = f"{text} \n"
 
-    print(f"New Table: \n{text}")
+    logging.debug(f"New Table: \n{text}")
 
     return text
 
-def graficaDia(now, delta):
+def makeJs(values, minDay, maxDay, nowNext):
+   program = """
+   import Chart from 'chart.js/auto'
+   import annotationPlugin from 'chartjs-plugin-annotation';
 
-    nowNext = now + datetime.timedelta(hours=delta)
-    data = getData(nowNext)
-    # create data
+   Chart.register(annotationPlugin);
+
+   (async function() {
+
+    const data = [
+    """
+   for i,val in enumerate(values):
+        program = f"{program}\n{{hour: {i}, pvpc: {values[i]} }},"
+
+   program = f"{program}\n ,];\n\n"
+
+   program = f"""{program}
+
+   new Chart(
+    document.getElementById('acquisitions'),
+    {{
+      type: 'line',
+      options: {{
+        animation: false,
+        plugins: {{
+          legend: {{
+            display: false
+          }},
+          tooltip: {{
+            enabled: false
+          }}
+        }},
+  	plugins: {{
+  	  annotation: {{
+  	    annotations: {{
+  	      point1: {{
+  	        type: 'point',
+  	        xValue: {minDay[0]},
+  	        yValue: {minDay[1]},
+  	        backgroundColor: 'rgba(255, 99, 132, 0.25)'
+          }},
+	     label1: {{
+		     type: 'label',
+		     backgroundColor: 'rgba(245,245,245)',
+		     xValue: {minDay[0]},
+             yValue: {minDay[1]},
+		     xAdjust: 100,
+             yAdjust: -200,
+		     content: ['Min: {minDay[1]} ({minDay[0]}:00)'],
+		     textAlign: 'start',
+	     	     callout: {{
+            	         display: true,
+            	         side: 10
+                 }}
+         }},
+	     point2: {{
+  	        type: 'point',
+  	        xValue: {maxDay[0]},
+  	        yValue: {maxDay[1]},
+  	        backgroundColor: 'rgba(255, 99, 132, 0.25)'
+          }},
+
+	     label2: {{
+		     type: 'label',
+		     backgroundColor: 'rgba(245,245,245)',
+		     xValue: {maxDay[0]},
+             yValue: {maxDay[1]},
+		     xAdjust: -300,
+             yAdjust: -100,
+		     content: ['Max: {maxDay[1]} ({maxDay[0]}:00)'],
+		     textAlign: 'start',
+	     	     callout: {{
+            	         display: true,
+            	         side: 10
+                 }}
+         }}
+        }}
+      }}
+    }}
+      }},
+      data: {{
+        labels: data.map(row => row.hour),
+        datasets: [
+          {{
+            label: 'Evolución precio para el día {nowNext}',
+            data: data.map(row => row.pvpc)
+          }}
+        ]
+      }}
+    }}
+  );
+
+}})();
+"""
+
+   return program
+
+def graficaDiaPlot(data, nowNext):
+    from plotly import express as px
+    import pandas as pd
+
+    values=[float(val['PCB'].replace(',','.'))/1000
+            for val in data["PVPC"]]
+
+    ymax = max(values)
+    xpos = values.index(ymax)
+    ymax = f"{max(values):.3f}"
+    ymin = min(values)
+    ypos = values.index(ymin)
+    ymin = f"{min(values):.3f}"
+
+    csv = "Hora,Precio\n"
+    for i, value in enumerate(values):
+        csv = f"{csv}{i},{value}\n"
+
+    import io
+    df = pd.read_csv(io.StringIO(csv))
+
+    fig = px.line(
+            df, x='Hora', y='Precio', markers=True,
+            title = (f"[@botElectrico] PVPC. Evolución precio para el día "
+                     f"{str(nowNext).split(' ')[0]}")
+    )
+    fig.add_annotation(
+        x=xpos,
+        y=ymax,
+        text=ymax,
+        font = dict(
+            color="#ffffff"
+            ),
+        bgcolor="tomato",
+        arrowcolor="tomato",
+        showarrow=True,
+        xanchor="right",
+    )
+    fig.add_annotation(
+        x=ypos,
+        y=ymin,
+        text=ymin,
+        arrowcolor="MediumSeaGreen",
+        font = dict(
+            color="#ffffff",
+            ),
+        bgcolor="MediumSeaGreen",
+        showarrow=True,
+        xanchor="left",
+        startarrowsize=5,
+    )
+
+    with open('/tmp/plotly_graph.html', 'w') as f:
+        f.write(fig.to_html(include_plotlyjs='cdn', full_html=False))
+
+    # with open('/tmp/plotly_graph.png', 'wb') as f:
+    #     f.write(fig.to_image(format='png'))
+
+def graficaDia(now, nowNext, delta, data):
+
     values=[float(val['PCB'].replace(',','.'))/1000
             for val in data["PVPC"]]
             #for val in data["included"][0]["attributes"]["values"]]
 
-    logging.info(values)
+    logging.debug(f"Values: {values}")
 
     plt.title(f"Evolución precio para el día {str(nowNext).split(' ')[0]}")
 
@@ -157,7 +335,10 @@ def graficaDia(now, delta):
     plt.plot(values)
     name = f"{nameFile(nowNext)}_image.png"
     plt.savefig(name)
-    return name, minDay, maxDay, values
+    name2 = f"{nameFile(nowNext)}_image.svg"
+    plt.savefig(name2)
+
+    return name, minDay, maxDay, values, nowNext
 
 def masBarato(data, hours):
     startH = int(hours[0].split(':')[0])
@@ -165,7 +346,7 @@ def masBarato(data, hours):
     if endH == '00':
         endH = '24'
 
-    logging.info(f"start: {startH}, {endH}")
+    logging.debug(f"Start: {startH}, {endH}")
     # print(data)
     values=[float(val['PCB'].replace(',','.'))/1000
             for val in data["PVPC"]]
@@ -186,9 +367,55 @@ def masBarato(data, hours):
             minV = hour
             minI = startH + i
             hourMin = hour
-    logging.info(f"Max {maxV} {maxI}")
-    logging.info(f"Min {minV} {minI}")
+    logging.debug(f"Max: {maxV} {maxI}")
+    logging.debug(f"Min: {minV} {minI}")
     return((minI, hourMin), (maxI, hourMax))
+
+def getPrices(data, hh):
+    pos = int(hh)
+    logging.debug(f"Position: {pos}")
+
+    prize = data["PVPC"][pos]["PCB"]
+
+    if pos < 23:
+        prizeNext = data["PVPC"][pos + 1]["PCB"]
+    else:
+        nextDay = now + datetime.timedelta(hours=1)
+        dataNext = getData(nextDay)
+
+        prizeNext = data["PVPC"][0]["PCB"]
+
+    prize = float(prize.replace(',','.')) / 1000
+    prizeNext = float(prizeNext.replace(',','.')) / 1000
+
+    return prize, prizeNext
+
+def checkTimeFrame(ranges, now, dd):
+    if dd > 4:
+        tipoHora = ''
+        frame = ["00:00", "24:00"]
+        start = convertToDatetime(frame[0])
+        end = convertToDatetime(frame[1])
+        frameType = "valle"
+    else:
+        for typeH in ranges:
+            start = convertToDatetime(ranges[typeH][0])
+            end = convertToDatetime(ranges[typeH][1])
+            logging.debug(f"Now: {now} Start:{start} End: {end}")
+
+            frame = ranges[typeH]
+            if ((start <= now) and (now < end)):
+                if typeH[-1].isdigit():
+                    # llano1, punta1, ....
+                    frameType = typeH[:-1]
+                else:
+                    frameType = typeH
+
+                tipoHora = typeH
+                break
+
+    return start, end, frameType, frame, tipoHora
+
 
 def main():
 
@@ -200,19 +427,8 @@ def main():
             if (len(sys.argv) > 2):
                 now = convertToDatetime(sys.argv[2])
 
-    ranges = {
-            "llano1": ["08:00", "10:00"],
-            "punta1": ["10:00", "14:00"],
-            "llano2": ["14:00", "18:00"],
-            "punta2": ["18:00", "22:00"],
-            "llano3": ["22:00", "24:00"],
-            "valle":  ["00:00", "8:00"]
-            }
-
-    button = {"llano": "🟠", "valle": "🟢", "punta": "🔴"}
-
     logging.basicConfig(
-            stream=sys.stdout, level=logging.DEBUG,
+            stream=sys.stdout, level=logging.INFO,
             format="%(asctime)s %(message)s"
             )
 
@@ -231,51 +447,19 @@ def main():
     data = getData(now)
     # Trying to catch errors in obtaining data
 
-    pos = int(hh)
-    logging.info(f"Position: {pos}")
-    # tipo = data["included"][0]["attributes"]["title"]
-    # tipo = tipo.replace("M", "k")
+    prize, prizeNext = getPrices(data, hh)
 
-    precio = data["PVPC"][pos]["PCB"]
-
-
-    if pos < 23:
-        prizeNext = data["PVPC"][pos + 1]["PCB"]
-    else:
-        nextDay = now + datetime.timedelta(hours=1)
-        dataNext = getData(nextDay)
-
-        prizeNext = data["PVPC"][0]["PCB"]
-
-    prize = float(precio.replace(',','.')) / 1000
-    prizeNext = float(prizeNext.replace(',','.')) / 1000
-
-    franja = "valle"
     luego = ''
     empiezaTramo = False
     minData = None
 
-    if dd > 4:
-        hours = ["00:00", "24:00"]
-        minData, maxData = masBarato(data, hours)
-        start = convertToDatetime(hours[0])
-        end = convertToDatetime(hours[1])
-    else:
-        for hours in ranges:
-            start = convertToDatetime(ranges[hours][0])
-            end = convertToDatetime(ranges[hours][1])
+    now = datetime.datetime.now()
 
-            if ((start <= now) and (now < end)):
-                if hours[-1].isdigit():
-                    # llano1, punta1, ....
-                    franja = hours[:-1]
-
-                tipoHora = hours
-                minData, maxData = masBarato(data, ranges[hours])
-                break
+    start, end, frameType, frame, tipoHora = checkTimeFrame(ranges, now, dd)
+    minData, maxData = masBarato(data, frame)
 
     if minData:
-        logging.info(f"minData: {minData}")
+        logging.debug(f"minData: {minData}")
         timeMin = minData[0]
         timeMax = maxData[0]
 
@@ -284,15 +468,25 @@ def main():
         msgBase1 = "Empieza"
     else:
         msgBase1 = "Estamos en"
-    msgBase1 = f"{msgBase1} periodo {franja}"
+    msgBase1 = f"{msgBase1} periodo {frameType}"
 
     timeGraph = 21
     if hh == timeGraph:
-        nameGraph, minDay, maxDay, values = graficaDia(now, 24 - timeGraph)
-        table = makeTable(values)
+        delta = 24 - timeGraph
+        nowNext = now + datetime.timedelta(hours=delta)
+        dataNext = getData(nowNext)
+        nameGraph, minDay, maxDay, values, nowNext = graficaDia(now,
+                                                                nowNext,
+                                                                delta,
+                                                                dataNext)
+        graficaDiaPlot(dataNext, nowNext)
+        print("holaa")
+        table = makeTable(values, minDay, maxDay)
+        js = makeJs(values, minDay, maxDay, str(nowNext).split(' ')[0])
+        with open(f"/tmp/kk.js", 'w') as f:
+            f.write(js)
 
-
-    if franja == "valle":
+    if frameType == "valle":
         if dd <= 4:
             msgFranja = "(entre las 00:00 y las 8:00)"
         else:
@@ -317,13 +511,10 @@ def main():
                      f"las {timeMin+1} (hora más económica)"
                      f"\nMáx: {prizeMax:.3f}, entre las {timeMax} y "
                      f"las {timeMax+1} (hora más cara)"
-                     #f"\nHora más cara entre las {timeMax} y las {timeMax+1}: "
-                     #f"{prizeMax:.3f}"
                      )
         msgBase1 = f"{msgBase1}{msgMaxMin}"
-        #f" Luego baja."
     msgBase1 = (
-            f"{button[franja]} {msgBase1}"
+            f"{button[frameType]} {msgBase1}"
             f"{msgPrecio}"
             )
     logging.info(f"Msg base: {msgBase1}")
@@ -336,28 +527,25 @@ def main():
 
     if mode == 'test':
         dsts = {
-                "mastodon": "@fernand0@mastodon.social",
                 "twitter": "fernand0Test",
-                "telegram": "testFernand0",
-                "facebook": "Fernand0Test",
+                "telegram": "testFernand0"
                }
     else:
         dsts = {
                 "twitter": "botElectrico",
                 "telegram": "botElectrico",
                 "mastodon": "@botElectrico@mas.to",
-                "facebook": "BotElectrico",
-                "medium": "botElectrico"
+                "blsk": "botElectrico.bsky.social"
                 }
 
     logging.info(f"Destinations: {dsts}")
 
     imgUrl = ''
     for dst in dsts:
-        logging.info(f"Destination: {dst}")
+        logging.info(f"Destination: {dsts[dst]}@{dst}")
         api = getApi(dst, dsts[dst])
 
-        if now.hour == timeGraph:
+        if hh == timeGraph:
             dateP = str(now).split(' ')[0]
             dateS = str(now + datetime.timedelta(days=1)).split(' ')[0]
             msgTitle = f"Evolución precio para el día {dateS}"
@@ -370,45 +558,53 @@ def main():
                          f"date:   {dateP} 21:00:59 +0200\n"
                          "categories: jekyll update\n"
                          "---")
-            if imgUrl:
-                msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
-                             f"![Gráfica de la evolución del precio para el día "
-                             f"{dateS}]({imgUrl})\n\n"
+            with open(f"{nameGraph[:-4]}.svg", 'r') as f:
+                imageSvg = f.read()
+            imageSvg = imageSvg[imageSvg.find('<svg'):]
+            posWidth = imageSvg.find("width")
+            posViewBox = imageSvg.find("viewBox")
+            imageSvg = imageSvg[:posWidth]+imageSvg[posViewBox:]
+            imagePlot = ""
+            if os.path.exists('/tmp/plotly_graph.html'):
+                with open('/tmp/plotly_graph.html', 'r') as f:
+                    imagePlot = f.read()
+
+            msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
+                         f"{imageSvg}\n"
+                         f"{imagePlot}\n"
+                         # f"![Gráfica de la evolución del precio para el
+                         # día " f"{dateS}]({imgUrl})\n\n"
                          f"\n{table}\n")
-            else:
-                msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
-                         f"![Gráfica de la evolución del precio para el día "
-                         f"{dateS}](url)\n\n"
-                         f"\n{table}\n")
+            # else:
+            #     msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
+            #              f"![Gráfica de la evolución del precio para el día "
+            #              f"{dateS}](url)\n\n"
+            #              f"\n{table}\n")
 
             msgTitle = (f"{msgTitle}\n{msgMin}{msgMax}\n")
                          #f"\n{table}\n")
             with open(f"{nameFile(now)}-post.md", 'w') as f:
                       f.write(msgMedium)
-            if dst == 'medium':
-                res = api.publishImage(msgMedium, nameGraph, alt=msgAlt)
-            else:
-                try:
-                    res = api.publishImage(msgTitle, nameGraph, alt=msgAlt)
-                    if hasattr(api, 'lastRes'): 
-                        lastRes = api.lastRes
-                    else:
-                        lastRes = None
+            try:
+                res = api.publishImage(msgTitle, nameGraph, alt=msgAlt)
+                if hasattr(api, 'lastRes'):
+                    lastRes = api.lastRes
+                else:
+                    lastRes = None
 
-                    if (lastRes 
-                        and ('media_attachments' in api.lastRes)
-                        and (len(api.lastRes['media_attachments']) >0) 
-                        and ('url' in api.lastRes['media_attachments'][0])):
-                        imgUrl = api.lastRes['media_attachments'][0]['url']
-                except:
-                    logging.info(f"Fail!")
+                if (lastRes
+                    and ('media_attachments' in api.lastRes)
+                    and (len(api.lastRes['media_attachments']) >0)
+                    and ('url' in api.lastRes['media_attachments'][0])):
+                    imgUrl = api.lastRes['media_attachments'][0]['url']
+            except:
+                res = 'Fail!'
+                logging.info(f"Fail!") 
 
-        if dst != 'medium':
-            res = api.publishPost(msg, "", "")
-            print(res)
 
-        print(res)
+        res = api.publishPost(msg, "", "")
 
+        logging.info(f"Res: {res}")
 
 if __name__ == "__main__":
     main()
