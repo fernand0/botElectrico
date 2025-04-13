@@ -130,28 +130,21 @@ def get_time_frame(now, weekday):
     if weekday > 4:
         frame = ["00:00", "24:00"]
         frame_type = "valle"
+        start = convert_time_to_datetime(frame[0])
+        end = convert_time_to_datetime(frame[1])
     else:
-        for frame_type, hours in TIME_RANGES.items():
-            start = convert_time_to_datetime(hours[0])
-            end = convert_time_to_datetime(hours[1])
+        for frame_type, frame in TIME_RANGES.items():
+            start = convert_time_to_datetime(frame[0])
+            end = convert_time_to_datetime(frame[1])
             if start <= now < end:
-                return (
-                    start,
-                    end,
-                    frame_type,
-                    hours,
-                    frame_type if not frame_type[-1].isdigit() else frame_type[:-1],
-                )
-        frame = ["00:00", "24:00"]
-        frame_type = "valle"
-    return (
-        convert_time_to_datetime(frame[0]),
-        convert_time_to_datetime(frame[1]),
-        frame_type,
-        frame,
-        frame_type,
-    )
-
+                break
+    return ( 
+            start, 
+            end, 
+            frame_type, 
+            frame, 
+            frame_type if not frame_type[-1].isdigit() else frame_type[:-1],
+            )
 
 def find_min_max_prices(data, hours):
     """Finds the min and max prices within a given time range."""
