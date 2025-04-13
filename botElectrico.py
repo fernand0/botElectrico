@@ -1,608 +1,371 @@
 #!/usr/bin/env python
 
+import argparse
 import datetime
-import getpass
 import json
 import logging
 import os
 import requests
 import sys
+import time
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker
-import matplotlib.patches as patches
+import pandas as pd
+from plotly import express as px
 
-from socialModules.configMod import *
+from socialModules.configMod import getApi
 
-apiBase = "https://apidatos.ree.es/"
+API_BASE = "https://apidatos.ree.es/"
+CLOCK_SYMBOLS = ["", "", "", "", "", "", "", "", "", "", "", ""]
+TIME_RANGES = {
+    "llano1": ["08:00", "10:00"],
+    "punta1": ["10:00", "14:00"],
+    "llano2": ["14:00", "18:00"],
+    "punta2": ["18:00", "22:00"],
+    "llano3": ["22:00", "24:00"],
+    "valle": ["00:00", "08:00"],
+}
+BUTTON_SYMBOLS = {"llano": "🟠", "valle": "🟢", "punta": "🔴"}
+CACHE_DIR = "/tmp"
 
 clock = ['🕛', '🕐', '🕑', '🕒', '🕓', '🕔', 
          '🕕', '🕖', '🕗', '🕘', '🕙', '🕚']
 
-ranges = {
-        "llano1": ["08:00", "10:00"],
-        "punta1": ["10:00", "14:00"],
-        "llano2": ["14:00", "18:00"],
-        "punta2": ["18:00", "22:00"],
-        "llano3": ["22:00", "24:00"],
-        "valle":  ["00:00", "8:00"]
-        }
+logging.basicConfig(
+    stream=sys.stdout, level=logging.INFO, format="%(asctime)s %(message)s"
+)
 
-button = {"llano": "🟠", "valle": "🟢", "punta": "🔴"}
+def parse_arguments():
+    """Analiza los argumentos de línea de comandos."""
+    parser = argparse.ArgumentParser(description="Procesa argumentos para el script.")
 
-def nameFile(now):
-    return f"/tmp/{now.year}-{now.month:0>2}-{now.day:0>2}"
+    parser.add_argument("-s", action="store_true", help="Activa el modo de simulación.")
+    parser.add_argument("-t", nargs="?", const="21:00", help="Establece la hora (formato HH:MM).")
 
-def getData(now):
-    #print(now)
-    name = f"{nameFile(now)}_data.json"
-    logging.debug(f"File: {name}")
-    if os.path.exists(name):
-        logging.info("Cached")
-        data=json.loads(open(name).read())
-    else:
-        logging.debug("Downloading")
-        # https://pybonacci.org/2020/05/12/demanda-electrica-en-espana-durante-el-confinamiento-covid-19-visto-con-python/
-        # https://api.esios.ree.es/
-        # https://www.ree.es/es/apidatos
-        # https://api.esios.ree.es/archives/70/download_json
-        # dataJ = json.loads(data.text)
-        # dataJ['PVPC'][0]
-        urlPrecio = (
-            f"{apiBase}es/datos/mercados/precios-mercados-tiempo-real?"\
-            f'start_date={(now).strftime("%Y-%m-%dT00:00")}'\
-            f'&end_date={(now).strftime("%Y-%m-%dT23:59")}'\
-            f"&time_trunc=hour"
-        )
-        urlPrecio = "https://api.esios.ree.es/archives/70/download_json"
-        data = None
-        while not data:
-            result = requests.get(urlPrecio)
-            print(result.content)
+    return parser.parse_args()
+
+def get_cached_data(filepath):
+    """Retrieves data from a cached file."""
+    if os.path.exists(filepath):
+        logging.info("Retrieving cached data.")
+        with open(filepath, "r") as f:
+            return json.load(f)
+    return None
+
+def fetch_api_data(url):
+    """Fetches data from the API with retry logic."""
+    data = None
+    while not data:
+        try:
+            result = requests.get(url)
+            result.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
             data = json.loads(result.content)
-            if (('errors' not in data) and
-                ('PVPC' in data)):
-                # (data["included"][0]["attributes"]["title"].find('PVPC')>= 0)):
-                    # When the PVPC is not ready the API serves
-                    # "Precio mercado spot (\u20ac/MWh)", which
-                    # is the prize paid to producers
-                    with open(name, 'w') as f:
-                        json.dump(data, f)
+            if "errors" not in data and "PVPC" in data:
+                return data
             else:
                 data = None
-            if not data:
-                logging.info("Waiting to see if it is available later")
-                import time
-                time.sleep(300)
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Error fetching data: {e}")
+        logging.info("Waiting to see if data becomes available.")
+        time.sleep(300)
+    return None
 
-    return data
 
-def nextSymbol(prize, prizeNext):
-    if prizeNext > prize:
-        nextSymbol = "↗"
-    elif prizeNext < prize:
-        nextSymbol = "↘"
+def save_data_to_cache(filepath, data):
+    """Saves data to a cached file."""
+    with open(filepath, "w") as f:
+        json.dump(data, f)
+
+
+def get_data(now):
+    """Retrieves PVPC data, either from cache or API."""
+    filepath = os.path.join(
+        CACHE_DIR, f"{now.year}-{now.month:02d}-{now.day:02d}_data.json"
+    )
+    cached_data = get_cached_data(filepath)
+    if cached_data:
+        return cached_data
+
+    url = "https://api.esios.ree.es/archives/70/download_json"  # simplified the URL
+    data = fetch_api_data(url)
+    if data:
+        save_data_to_cache(filepath, data)
+        return data
+    return None
+
+
+def get_price_and_next(data, hour):
+    """Retrieves the current and next hour's prices."""
+    current_price = float(data["PVPC"][hour]["PCB"].replace(",", ".")) / 1000
+    next_hour = hour + 1
+    if next_hour < 24:
+        next_price = float(data["PVPC"][next_hour]["PCB"].replace(",", ".")) / 1000
     else:
-        nextSymbol = "↔"
+        next_day = datetime.datetime.now() + datetime.timedelta(hours=1)
+        next_day_data = get_data(next_day)
+        next_price = float(next_day_data["PVPC"][0]["PCB"].replace(",", ".")) / 1000
+    return current_price, next_price
 
-    return nextSymbol
 
-def convertToDatetime(myTime):
-    now = datetime.datetime.now()
-    date = datetime.datetime.date(now)
-    if myTime == '24:00':
-        date = date + datetime.timedelta(days=1)
-        converted = '00:00'
+def get_price_trend_symbol(current_price, next_price):
+    """Determines the price trend symbol."""
+    if next_price > current_price:
+        return "↗"
+    elif next_price < current_price:
+        return "↘"
     else:
-        converted = myTime
-    converted = datetime.datetime.strptime(f"{date} {converted}",
-                                           "%Y-%m-%d %H:%M")
+        return "↔"
 
-    return converted
 
-def makeTable(values, minDay, maxDay):
-    hh = 0
-    # text = "<table>"
-    text = ""
-    logging.debug(f"Values: {values}")
-    for i, val in enumerate(values):
-        if i - 1 >= 0:
-            prevVal = values[i-1]
-        else:
-            prevVal = 1000 #FIXME
-        text = (f"{text}|")
-        textt = (f"{clock[hh % 12]} ({hh:02}:00)"
-                f"{nextSymbol(val, prevVal)} {val:.3f}"
-                )
-        color = ''
-        if i == maxDay[0]:
-            color = 'Tomato'
-        if i == minDay[0]:
-            color = 'MediumSeaGreen'
+def convert_time_to_datetime(time_str):
+    """Converts a time string to a datetime object."""
+    now = datetime.datetime.now().date()
+    if time_str == "24:00":
+        now += datetime.timedelta(days=1)
+        time_str = "00:00"
+    return datetime.datetime.strptime(f"{now} {time_str}", "%Y-%m-%d %H:%M")
+
+
+def get_time_frame(now, weekday):
+    """Determines the current time frame."""
+    if weekday > 4:
+        frame = ["00:00", "24:00"]
+        frame_type = "valle"
+        start = convert_time_to_datetime(frame[0])
+        end = convert_time_to_datetime(frame[1])
+    else:
+        for frame_type, frame in TIME_RANGES.items():
+            start = convert_time_to_datetime(frame[0])
+            end = convert_time_to_datetime(frame[1])
+            if start <= now < end:
+                break
+    return ( 
+            start, 
+            end, 
+            frame, 
+            frame_type if not frame_type[-1].isdigit() else frame_type[:-1],
+            )
+
+def find_min_max_prices(data, hours):
+    """Finds the min and max prices within a given time range."""
+    start_hour = int(hours[0].split(":")[0])
+    end_hour = int(hours[1].split(":")[0]) if hours[1] != "00:00" else 24
+    prices = [
+        float(val["PCB"].replace(",", ".")) / 1000
+        for val in data["PVPC"][start_hour:end_hour]
+    ]
+    min_price, max_price = min(prices), max(prices)
+    min_index, max_index = prices.index(min_price), prices.index(max_price)
+    return (start_hour + min_index, min_price), (start_hour + max_index, max_price)
+
+
+def generate_message(now, data, time_frame_info, min_max_prices):
+    """Generates the message to be published."""
+    start, end, hours, frame_name = time_frame_info
+    current_price, next_price = get_price_and_next(data, now.hour)
+    price_trend = get_price_trend_symbol(current_price, next_price)
+    range_msg = (
+        f"(entre las {hours[0]} y las {hours[1]})"
+        if frame_name != "valle"
+        else "(entre las 00:00 y las 8:00)" if now.weekday() <= 4 else "(todo el día)"
+    )
+    message = f"{BUTTON_SYMBOLS[frame_name]} {'Empieza' if now.hour == start.hour else 'Estamos en'} periodo {frame_name} {range_msg}. Precios PVPC\n"
+    message += f"En esta hora: {current_price:.3f}\nEn la hora siguiente: {next_price:.3f}{price_trend}\n"
+    hour_time_frame_info = time_frame_info[0].hour
+    if (hour_time_frame_info == now.hour) and min_max_prices:
+        min_hour, min_price = min_max_prices[0]
+        max_hour, max_price = min_max_prices[1]
+        message += f"Mín: {min_price:.3f}, entre las {min_hour}:00 y las {min_hour + 1}:00 (hora más económica)\n"
+        message += f"Máx: {max_price:.3f}, entre las {max_hour}:00 y las {max_hour + 1}:00 (hora más cara)"
+    return message
+
+def generate_table(values, min_day, max_day):
+    """Generates a table string from price values."""
+    table = ""
+    for i, price in enumerate(values):
+        prev_price = values[i - 1] if i > 0 else 1000  # FIXME: Handle first element
+        price_text = f"{CLOCK_SYMBOLS[i % 12]} ({i:02d}:00) {get_price_trend_symbol(price, prev_price)} {price:.3f}"
+        color = ""
+        if i == max_day[0]:
+            color = "Tomato"
+        if i == min_day[0]:
+            color = "MediumSeaGreen"
         if color:
-            textt = f"<span style='border:2px solid {color};'>{textt}</span>"
-        text = f"{text}{textt}"
-        if (hh % 4 == 3):
-            text = f"{text} | \n"
-        hh = hh + 1
-    text = f"{text} \n"
+            price_text = f"<span style='border:2px solid {color};'>{price_text}</span>"
+        table += f"| {price_text} "
+        if (i + 1) % 4 == 0:
+            table += "|\n"
+    return table + "\n"
 
-    logging.debug(f"New Table: \n{text}")
-
-    return text
-
-def makeJs(values, minDay, maxDay, nowNext):
-   program = """
-   import Chart from 'chart.js/auto'
-   import annotationPlugin from 'chartjs-plugin-annotation';
-
-   Chart.register(annotationPlugin);
-
-   (async function() {
-
-    const data = [
+def generate_chart_js(values, min_day, max_day, now_next):
+    """Generates JavaScript code for a Chart.js chart."""
+    js = f"""
+        import Chart from 'chart.js/auto';
+        import annotationPlugin from 'chartjs-plugin-annotation';
+        Chart.register(annotationPlugin);
+        (async function() {{
+            const data = [{', '.join([f'{{hour: {i}, pvpc: {price} }}' for i, price in enumerate(values)])}];
+            new Chart(document.getElementById('acquisitions'), {{
+                type: 'line',
+                options: {{
+                    animation: false,
+                    plugins: {{ legend: {{ display: false }}, tooltip: {{ enabled: false }} }},
+                    annotation: {{
+                        annotations: {{
+                            point1: {{ type: 'point', xValue: {min_day[0]}, yValue: {min_day[1]}, backgroundColor: 'rgba(255, 99, 132, 0.25)' }},
+                            label1: {{ type: 'label', backgroundColor: 'rgba(245,245,245)', xValue: {min_day[0]}, yValue: {min_day[1]}, xAdjust: 100, yAdjust: -200, content: ['Min: {min_day[1]} ({min_day[0]}:00)'], textAlign: 'start', callout: {{ display: true, side: 10 }} }},
+                            point2: {{ type: 'point', xValue: {max_day[0]}, yValue: {max_day[1]}, backgroundColor: 'rgba(255, 99, 132, 0.25)' }},
+                            label2: {{ type: 'label', backgroundColor: 'rgba(245,245,245)', xValue: {max_day[0]}, yValue: {max_day[1]}, xAdjust: -300, yAdjust: -100, content: ['Max: {max_day[1]} ({max_day[0]}:00)'], textAlign: 'start', callout: {{ display: true, side: 10 }} }}
+                        }}
+                    }}
+                }},
+                data: {{ labels: data.map(row => row.hour), datasets: [{{ label: 'Evolución precio para el día {now_next}', data: data.map(row => row.pvpc) }}] }}
+            }});
+        }})();
     """
-   for i,val in enumerate(values):
-        program = f"{program}\n{{hour: {i}, pvpc: {values[i]} }},"
+    return js
 
-   program = f"{program}\n ,];\n\n"
-
-   program = f"""{program}
-
-   new Chart(
-    document.getElementById('acquisitions'),
-    {{
-      type: 'line',
-      options: {{
-        animation: false,
-        plugins: {{
-          legend: {{
-            display: false
-          }},
-          tooltip: {{
-            enabled: false
-          }}
-        }},
-  	plugins: {{
-  	  annotation: {{
-  	    annotations: {{
-  	      point1: {{
-  	        type: 'point',
-  	        xValue: {minDay[0]},
-  	        yValue: {minDay[1]},
-  	        backgroundColor: 'rgba(255, 99, 132, 0.25)'
-          }},
-	     label1: {{
-		     type: 'label',
-		     backgroundColor: 'rgba(245,245,245)',
-		     xValue: {minDay[0]},
-             yValue: {minDay[1]},
-		     xAdjust: 100,
-             yAdjust: -200,
-		     content: ['Min: {minDay[1]} ({minDay[0]}:00)'],
-		     textAlign: 'start',
-	     	     callout: {{
-            	         display: true,
-            	         side: 10
-                 }}
-         }},
-	     point2: {{
-  	        type: 'point',
-  	        xValue: {maxDay[0]},
-  	        yValue: {maxDay[1]},
-  	        backgroundColor: 'rgba(255, 99, 132, 0.25)'
-          }},
-
-	     label2: {{
-		     type: 'label',
-		     backgroundColor: 'rgba(245,245,245)',
-		     xValue: {maxDay[0]},
-             yValue: {maxDay[1]},
-		     xAdjust: -300,
-             yAdjust: -100,
-		     content: ['Max: {maxDay[1]} ({maxDay[0]}:00)'],
-		     textAlign: 'start',
-	     	     callout: {{
-            	         display: true,
-            	         side: 10
-                 }}
-         }}
-        }}
-      }}
-    }}
-      }},
-      data: {{
-        labels: data.map(row => row.hour),
-        datasets: [
-          {{
-            label: 'Evolución precio para el día {nowNext}',
-            data: data.map(row => row.pvpc)
-          }}
-        ]
-      }}
-    }}
-  );
-
-}})();
-"""
-
-   return program
-
-def graficaDiaPlot(data, nowNext):
-    from plotly import express as px
-    import pandas as pd
-
-    values=[float(val['PCB'].replace(',','.'))/1000
-            for val in data["PVPC"]]
-
-    ymax = max(values)
-    xpos = values.index(ymax)
-    ymax = f"{max(values):.3f}"
-    ymin = min(values)
-    ypos = values.index(ymin)
-    ymin = f"{min(values):.3f}"
-
-    csv = "Hora,Precio\n"
-    for i, value in enumerate(values):
-        csv = f"{csv}{i},{value}\n"
-
-    import io
-    df = pd.read_csv(io.StringIO(csv))
-
-    fig = px.line(
-            df, x='Hora', y='Precio', markers=True,
-            title = (f"[@botElectrico] PVPC. Evolución precio para el día "
-                     f"{str(nowNext).split(' ')[0]}")
-    )
-    fig.add_annotation(
-        x=xpos,
-        y=ymax,
-        text=ymax,
-        font = dict(
-            color="#ffffff"
-            ),
-        bgcolor="tomato",
-        arrowcolor="tomato",
-        showarrow=True,
-        xanchor="right",
-    )
-    fig.add_annotation(
-        x=ypos,
-        y=ymin,
-        text=ymin,
-        arrowcolor="MediumSeaGreen",
-        font = dict(
-            color="#ffffff",
-            ),
-        bgcolor="MediumSeaGreen",
-        showarrow=True,
-        xanchor="left",
-        startarrowsize=5,
-    )
-
+def generate_plotly_graph(data, now_next):
+    """Generates and saves a Plotly graph to HTML."""
+    prices = [float(val['PCB'].replace(',', '.')) / 1000 for val in data["PVPC"]]
+    max_price, min_price = max(prices), min(prices)
+    max_index, min_index = prices.index(max_price), prices.index(min_price)
+    df = pd.DataFrame({'Hora': range(len(prices)), 'Precio': prices})
+    fig = px.line(df, x='Hora', y='Precio', markers=True, title=f"[@botElectrico] PVPC. Evolución precio para el día {str(now_next).split(' ')[0]}")
+    fig.add_annotation(x=max_index, y=max_price, text=f"{max_price:.3f}", font=dict(color="#ffffff"), bgcolor="tomato", arrowcolor="tomato", showarrow=True, xanchor="right")
+    fig.add_annotation(x=min_index, y=min_price, text=f"{min_price:.3f}", font=dict(color="#ffffff"), bgcolor="MediumSeaGreen", arrowcolor="MediumSeaGreen", showarrow=True, xanchor="left")
     with open('/tmp/plotly_graph.html', 'w') as f:
         f.write(fig.to_html(include_plotlyjs='cdn', full_html=False))
 
-    # with open('/tmp/plotly_graph.png', 'wb') as f:
-    #     f.write(fig.to_image(format='png'))
-
-def graficaDia(now, nowNext, delta, data):
-
-    values=[float(val['PCB'].replace(',','.'))/1000
-            for val in data["PVPC"]]
-            #for val in data["included"][0]["attributes"]["values"]]
-
-    logging.debug(f"Values: {values}")
-
-    plt.title(f"Evolución precio para el día {str(nowNext).split(' ')[0]}")
-
-    maxy = 0.275
-    miny = 0.010
-    ymax = max(values)
-    ymin = min(values)
-    plt.ylim((ymin-0.10, ymax+0.10))
+def generate_matplotlib_graph(values, now_next):
+    """Generates and saves a Matplotlib graph to PNG and SVG."""
+    max_price, min_price = max(values), min(values)
+    max_index, min_index = values.index(max_price), values.index(min_price)
+    plt.title(f"Evolución precio para el día {str(now_next).split(' ')[0]}")
+    plt.ylim(min_price - 0.10, max_price + 0.10)
     plt.xlabel("Horas")
     plt.ylabel("Precio")
-    plt.xticks(range(0, 23, 4))
-    formatter = matplotlib.ticker.StrMethodFormatter("{x:.2f}")
-    plt.gca().xaxis.set_major_formatter(formatter)
-
-    ymax = max(values)
-    xpos = values.index(ymax)
-    xmax = xpos
-    ymin = min(values)
-    xpos = values.index(ymin)
-    xmin = xpos
-    maxDay = (xmax, ymax)
-    minDay = (xmin, ymin)
-
-    arrowprops = dict(arrowstyle='simple', linewidth=0.0001,
-            color='paleturquoise')
-    # linewidth cannot be a string ?
-
-    posMax = ymax - 2/1000
-    posMin = posMax - 10/1000
-    if xmax < 8:
-        posMax = posMax - 10/1000
-        posMin = posMin - 10/1000
-
-    plt.annotate(f'Max: {ymax:.3f} ({xmax}:00)', xy=(xmax,ymax),
-            xytext=(0,posMax), arrowprops=arrowprops)
-    plt.annotate(f'Min: {ymin:.3f} ({xmin}:00)', xy=(xmin,ymin),
-            xytext=(0.5, posMin), arrowprops=arrowprops)
+    plt.xticks(range(0, 24, 4))
+    plt.gca().xaxis.set_major_formatter(matplotlib.ticker.StrMethodFormatter("{x:.2f}"))
+    arrowprops = dict(arrowstyle='simple', linewidth=0.0001, color='paleturquoise')
+    plt.annotate(f'Max: {max_price:.3f} ({max_index}:00)', xy=(max_index, max_price), xytext=(0, max_price - 0.002), arrowprops=arrowprops)
+    plt.annotate(f'Min: {min_price:.3f} ({min_index}:00)', xy=(min_index, min_price), xytext=(0.5, max_price - 0.01), arrowprops=arrowprops)
     plt.plot(values)
-    name = f"{nameFile(nowNext)}_image.png"
-    plt.savefig(name)
-    name2 = f"{nameFile(nowNext)}_image.svg"
-    plt.savefig(name2)
-
-    return name, minDay, maxDay, values, nowNext
-
-def masBarato(data, hours):
-    startH = int(hours[0].split(':')[0])
-    endH = int(hours[1].split(':')[0])
-    if endH == '00':
-        endH = '24'
-
-    logging.debug(f"Start: {startH}, {endH}")
-    # print(data)
-    values=[float(val['PCB'].replace(',','.'))/1000
-            for val in data["PVPC"]]
-    #values = data["included"][0]["attributes"]["values"]
-
-    # for val in [values[start*8:(start+1)*8] for start in range(3)]:
-    maxI = 0
-    maxV = 0
-    minI = 0
-    minV = 100000
-    for i, hour in enumerate(values[startH: endH]):
-        # logging.info(f"Hour: {hour}")
-        if hour>maxV:
-            maxV = hour
-            maxI = startH + i
-            hourMax = hour
-        if hour<minV:
-            minV = hour
-            minI = startH + i
-            hourMin = hour
-    logging.debug(f"Max: {maxV} {maxI}")
-    logging.debug(f"Min: {minV} {minI}")
-    return((minI, hourMin), (maxI, hourMax))
-
-def getPrices(data, hh):
-    pos = int(hh)
-    logging.debug(f"Position: {pos}")
-
-    prize = data["PVPC"][pos]["PCB"]
-
-    if pos < 23:
-        prizeNext = data["PVPC"][pos + 1]["PCB"]
-    else:
-        nextDay = now + datetime.timedelta(hours=1)
-        dataNext = getData(nextDay)
-
-        prizeNext = data["PVPC"][0]["PCB"]
-
-    prize = float(prize.replace(',','.')) / 1000
-    prizeNext = float(prizeNext.replace(',','.')) / 1000
-
-    return prize, prizeNext
-
-def checkTimeFrame(ranges, now, dd):
-    if dd > 4:
-        tipoHora = ''
-        frame = ["00:00", "24:00"]
-        start = convertToDatetime(frame[0])
-        end = convertToDatetime(frame[1])
-        frameType = "valle"
-    else:
-        for typeH in ranges:
-            start = convertToDatetime(ranges[typeH][0])
-            end = convertToDatetime(ranges[typeH][1])
-            logging.debug(f"Now: {now} Start:{start} End: {end}")
-
-            frame = ranges[typeH]
-            if ((start <= now) and (now < end)):
-                if typeH[-1].isdigit():
-                    # llano1, punta1, ....
-                    frameType = typeH[:-1]
-                else:
-                    frameType = typeH
-
-                tipoHora = typeH
-                break
-
-    return start, end, frameType, frame, tipoHora
+    png_path = f"{CACHE_DIR}/{now_next.year}-{now_next.month:02d}-{now_next.day:02d}_image.png"
+    svg_path = f"{CACHE_DIR}/{now_next.year}-{now_next.month:02d}-{now_next.day:02d}_image.svg"
+    plt.savefig(png_path)
+    plt.savefig(svg_path)
+    plt.close()
+    return png_path, (min_index, min_price), (max_index, max_price), values
 
 
 def main():
-
     mode = None
     now = None
-    if len(sys.argv) > 1:
-        if sys.argv[1] == '-t':
-            mode = 'test'
-            if (len(sys.argv) > 2):
-                now = convertToDatetime(sys.argv[2])
+    # if len(sys.argv) > 1:
+    #     if sys.argv[1] == "-t":
+    #         mode = "test"
+    #         if len(sys.argv) > 2:
+    #             now = convert_time_to_datetime(sys.argv[2])
+    args = parse_arguments()
+    print(args)
 
-    logging.basicConfig(
-            stream=sys.stdout, level=logging.INFO,
-            format="%(asctime)s %(message)s"
-            )
-
-    if mode == 'test':
-        if not now:
-            now = convertToDatetime("21:00")
+    if args.s:
+        if args.t:
+            t_now = args.t
+        else:
+            t_now = "21:00" 
+        now = convert_time_to_datetime(t_now)
     elif not now:
         now = datetime.datetime.now()
-    now = convertToDatetime("21:00")
-    # print(now)
+    print(f"Now: {now}")
 
-    dd = now.weekday()
-    hh = now.hour
-    mm = now.minute
-
-    data = getData(now)
-    # Trying to catch errors in obtaining data
-
-    prize, prizeNext = getPrices(data, hh)
-
-    luego = ''
-    empiezaTramo = False
-    minData = None
-
-    now = datetime.datetime.now()
-
-    start, end, frameType, frame, tipoHora = checkTimeFrame(ranges, now, dd)
-    minData, maxData = masBarato(data, frame)
-
-    if minData:
-        logging.debug(f"minData: {minData}")
-        timeMin = minData[0]
-        timeMax = maxData[0]
-
-    if hh == start.hour:
-        empiezaTramo = True
-        msgBase1 = "Empieza"
-    else:
-        msgBase1 = "Estamos en"
-    msgBase1 = f"{msgBase1} periodo {frameType}"
-
-    timeGraph = 21
-    if hh == timeGraph:
-        delta = 24 - timeGraph
-        nowNext = now + datetime.timedelta(hours=delta)
-        dataNext = getData(nowNext)
-        nameGraph, minDay, maxDay, values, nowNext = graficaDia(now,
-                                                                nowNext,
-                                                                delta,
-                                                                dataNext)
-        graficaDiaPlot(dataNext, nowNext)
-        print("holaa")
-        table = makeTable(values, minDay, maxDay)
-        js = makeJs(values, minDay, maxDay, str(nowNext).split(' ')[0])
-        with open(f"/tmp/kk.js", 'w') as f:
-            f.write(js)
-
-    if frameType == "valle":
-        if dd <= 4:
-            msgFranja = "(entre las 00:00 y las 8:00)"
-        else:
-            msgFranja = "(todo el día)"
-    else:
-        msgFranja = (f"(entre las {ranges[tipoHora][0]} "
-                     f"y las {ranges[tipoHora][1]})")
-
-    msgBase1 = f"{msgBase1} {msgFranja}. Precios PVPC"
-
-    msgPrecio = (
-            f"\nEn esta hora: {prize:.3f}"# {tipo}"
-            f"\nEn la hora siguiente: "
-            f"{prizeNext:.3f}{nextSymbol(prize, prizeNext)}"
-            )
-
-    if empiezaTramo:
-        prizeMin = minData[1]
-        prizeMax = maxData[1]
-        msgMaxMin = (
-                     f"\nMín: {prizeMin:.3f}, entre las {timeMin} y "
-                     f"las {timeMin+1} (hora más económica)"
-                     f"\nMáx: {prizeMax:.3f}, entre las {timeMax} y "
-                     f"las {timeMax+1} (hora más cara)"
-                     )
-        msgBase1 = f"{msgBase1}{msgMaxMin}"
-    msgBase1 = (
-            f"{button[frameType]} {msgBase1}"
-            f"{msgPrecio}"
-            )
-    logging.info(f"Msg base: {msgBase1}")
-    logging.info(f"Len: {len(msgBase1)}")
-    msg = msgBase1
-
-    if len(msg)>280:
-        logging.warning("Muy largo")
+    weekday = now.weekday()
+    data = get_data(now)
+    if not data:
+        logging.error("Failed to retrieve data. Exiting.")
         return
 
-    if mode == 'test':
-        dsts = {
-                "twitter": "fernand0Test",
-                "telegram": "testFernand0"
-               }
-    else:
-        dsts = {
-                "twitter": "botElectricoo",
-                "telegram": "botElectrico",
-                "mastodon": "@botElectrico@mas.to",
-                "blsk": "botElectrico.bsky.social"
-                }
+    time_frame_info = get_time_frame(now, weekday)
+    min_max_prices = find_min_max_prices(data, time_frame_info[2])
+    message = generate_message(now, data, time_frame_info, min_max_prices)
 
-    logging.info(f"Destinations: {dsts}")
+    if len(message) > 280:
+        logging.warning("Message too long. Truncating.")
+        message = message[:280]
 
-    imgUrl = ''
-    for dst in dsts:
-        logging.info(f"Destination: {dsts[dst]}@{dst}")
-        api = getApi(dst, dsts[dst])
+    destinations = {
+        "twitter": "fernand0Test" if args.s else "botElectrico",
+        "telegram": "testFernand0" if args.s else "botElectrico",
+        "mastodon": "@fernand0Test@fosstodon.org" if args.s else "@botElectrico@mas.to",
+        "blsk": None if args.s else "botElectrico.bsky.social",
+    }
+    logging.info(f"Destinations: {destinations}")
 
-        if hh == timeGraph:
-            dateP = str(now).split(' ')[0]
-            dateS = str(now + datetime.timedelta(days=1)).split(' ')[0]
-            msgTitle = f"Evolución precio para el día {dateS}"
-            msgMin = (f"Mínimo a las {minDay[0]}:00 ({minDay[1]:.3f}). ")
-            msgMax = (f"Máximo a las {maxDay[0]}:00 ({maxDay[1]:.3f}). ")
-            msgAlt = (f"{msgTitle}. {msgMin}\n{msgMax}")
-            msgTitle2 = (f"---\n"
-                         "layout: post\n"
-                         f"title:  '{msgTitle}'\n"
-                         f"date:   {dateP} 21:00:59 +0200\n"
-                         "categories: jekyll update\n"
-                         "---")
-            with open(f"{nameGraph[:-4]}.svg", 'r') as f:
-                imageSvg = f.read()
-            imageSvg = imageSvg[imageSvg.find('<svg'):]
-            posWidth = imageSvg.find("width")
-            posViewBox = imageSvg.find("viewBox")
-            imageSvg = imageSvg[:posWidth]+imageSvg[posViewBox:]
-            imagePlot = ""
-            if os.path.exists('/tmp/plotly_graph.html'):
-                with open('/tmp/plotly_graph.html', 'r') as f:
-                    imagePlot = f.read()
+    if len(message) > 280:
+        logging.warning("Message too long. Truncating.")
+        message = message[:280]
 
-            msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
-                         f"{imageSvg}\n"
-                         f"{imagePlot}\n"
-                         # f"![Gráfica de la evolución del precio para el
-                         # día " f"{dateS}]({imgUrl})\n\n"
-                         f"\n{table}\n")
-            # else:
-            #     msgMedium = (f"{msgTitle2}\n{msgMin}{msgMax}\n\n"
-            #              f"![Gráfica de la evolución del precio para el día "
-            #              f"{dateS}](url)\n\n"
-            #              f"\n{table}\n")
+    destinations = {
+        "twitter": "fernand0Test" if mode == 'test' else "botElectrico",
+        "telegram": "testFernand0" if mode == 'test' else "botElectrico",
+        "mastodon": "@botElectrico@mas.to",
+        "blsk": "botElectrico.bsky.social"
+    }
+    logging.info(f"Destinations: {destinations}")
 
-            msgTitle = (f"{msgTitle}\n{msgMin}{msgMax}\n")
-                         #f"\n{table}\n")
-            with open(f"{nameFile(now)}-post.md", 'w') as f:
-                      f.write(msgMedium)
+    if now.hour == 21:
+        next_day = now + datetime.timedelta(days=1)
+        next_day_data = get_data(next_day)
+        png_path, min_day, max_day, values = generate_matplotlib_graph(
+            [float(val['PCB'].replace(',', '.')) / 1000 for val in next_day_data["PVPC"]], next_day)
+        generate_plotly_graph(next_day_data, next_day)
+        table = generate_table(values, min_day, max_day)
+        js_code = generate_chart_js(values, min_day, max_day, str(next_day).split(' ')[0])
+        with open(f"/tmp/kk.js", 'w') as f:
+            f.write(js_code)
+
+        date_post = str(now).split(' ')[0]
+        date_next_day = str(next_day).split(' ')[0]
+        title = f"Evolución precio para el día {date_next_day}"
+        alt_text = f"{title}. Mínimo a las {min_day[0]}:00 ({min_day[1]:.3f}). Máximo a las {max_day[0]}:00 ({max_day[1]:.3f})."
+        markdown_content = f"""
+            ---
+            layout: post
+            title: '{title}'
+            date: {date_post} 21:00:59 +0200
+            categories: jekyll update
+            ---
+            {alt_text}
+            {open(f"{png_path[:-4]}.svg", 'r').read()}
+            {open('/tmp/plotly_graph.html', 'r').read()}
+            {table}
+        """
+        with open(f"{CACHE_DIR}/{now.year}-{now.month:02d}-{now.day:02d}-post.md", 'w') as f:
+            f.write(markdown_content)
+
+        return
+        for destination, account in destinations.items():
+            api = getApi(destination, account)
             try:
-                res = api.publishImage(msgTitle, nameGraph, alt=msgAlt)
-                if hasattr(api, 'lastRes'):
-                    lastRes = api.lastRes
+                result = api.publishImage(title, png_path, alt=alt_text)
+                if hasattr(api, 'lastRes') and api.lastRes and 'media_attachments' in api.lastRes and api.lastRes['media_attachments'] and 'url' in api.lastRes['media_attachments'][0]:
+                    image_url = api.lastRes['media_attachments'][0]['url']
                 else:
-                    lastRes = None
+                    image_url = None
+            except Exception as e:
+                logging.error(f"Failed to publish image to {destination}: {e}")
+                image_url = None
 
-                if (lastRes
-                    and ('media_attachments' in api.lastRes)
-                    and (len(api.lastRes['media_attachments']) >0)
-                    and ('url' in api.lastRes['media_attachments'][0])):
-                    imgUrl = api.lastRes['media_attachments'][0]['url']
-            except:
-                res = 'Fail!'
-                logging.info(f"Fail!") 
+            api.publishPost(message, "", "")
+            logging.info(f"Published to {destination}: {result}")
+    else:
+        for destination, account in destinations.items():
+            api = getApi(destination, account)
+            result = api.publishPost(message, "", "")
+            logging.info(f"Published to {destination}: {result}")
 
-
-        res = api.publishPost(msg, "", "")
-
-        logging.info(f"Res: {res}")
 
 if __name__ == "__main__":
     main()
