@@ -224,8 +224,8 @@ def main():
 
     for destination, account in destinations.items():
         logging.info(f"Destination: {account}@{destination}")
-        api = getApi(destination, account)
-        if api.getClient():
+        if account:
+            api = getApi(destination, account)
             result = api.publishPost(message, "", "")
             logging.info(f"Result: {result}")
 
