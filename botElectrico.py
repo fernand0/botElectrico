@@ -336,19 +336,17 @@ def main():
         date_next_day = str(next_day).split(' ')[0]
         title = f"Evolución precio para el día {date_next_day}"
         alt_text = f"{title}. Mínimo a las {min_day[0]}:00 ({min_day[1]:.3f}). Máximo a las {max_day[0]}:00 ({max_day[1]:.3f})."
-        markdown_content = f"""
-            ---
-            layout: post
-            title: '{title}'
-            date: {date_post} 21:00:59 +0200
-            categories: jekyll update
-            ---
-            {alt_text}
-            {open(f"{png_path[:-4]}.svg", 'r').read()}
-            {open('/tmp/plotly_graph.html', 'r').read()}
-            {table}
-        """
-        markdown_content = markdown_content.replace("           ","")
+        markdown_content = (f"---\n"
+                            "layout: post\n"
+                            f"title:  '{title}'\n"
+                            f"date:   {date_post} 21:00:59 +0200\n"
+                            "categories: jekyll update\n"
+                            "---\n\n" 
+                            f"{alt_text}\n\n"
+                            f"{open(f"{png_path[:-4]}.svg", 'r').read()}\n\n"
+                            f"{open('/tmp/plotly_graph.html', 'r').read()}\n\n"
+                            f"{table}"
+                            )
         with open(f"{CACHE_DIR}/{now.year}-{now.month:02d}-{now.day:02d}-post.md", 'w') as f:
             f.write(markdown_content)
 
