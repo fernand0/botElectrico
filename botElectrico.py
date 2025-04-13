@@ -307,12 +307,18 @@ def main():
         logging.warning("Message too long. Truncating.")
         message = message[:280]
 
-    destinations = {
-        "twitter": "fernand0Test" if mode == 'test' else "botElectrico",
-        "telegram": "testFernand0" if mode == 'test' else "botElectrico",
-        "mastodon": "@botElectrico@mas.to",
-        "blsk": "botElectrico.bsky.social"
-    }
+    if args.s:
+        destinations = { 
+                        "twitter": "fernand0Test", 
+                        "telegram": "testFernand0" 
+                        }
+    else: 
+        destinations = { 
+                        "twitter": "fernand0Test" if mode == 'test' else "botElectrico", 
+                        "telegram": "testFernand0" if mode == 'test' else "botElectrico", 
+                        "mastodon": "@botElectrico@mas.to", 
+                        "blsk": "botElectrico.bsky.social" 
+                        }
     logging.info(f"Destinations: {destinations}")
 
     if now.hour == 21:
@@ -342,6 +348,7 @@ def main():
             {open('/tmp/plotly_graph.html', 'r').read()}
             {table}
         """
+        markdown_content = markdown_content.replace("           ","")
         with open(f"{CACHE_DIR}/{now.year}-{now.month:02d}-{now.day:02d}-post.md", 'w') as f:
             f.write(markdown_content)
 
