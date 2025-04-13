@@ -141,7 +141,6 @@ def get_time_frame(now, weekday):
     return ( 
             start, 
             end, 
-            frame_type, 
             frame, 
             frame_type if not frame_type[-1].isdigit() else frame_type[:-1],
             )
@@ -161,12 +160,12 @@ def find_min_max_prices(data, hours):
 
 def generate_message(now, data, time_frame_info, min_max_prices):
     """Generates the message to be published."""
-    start, end, frame_type, hours, frame_name = time_frame_info
+    start, end, hours, frame_name = time_frame_info
     current_price, next_price = get_price_and_next(data, now.hour)
     price_trend = get_price_trend_symbol(current_price, next_price)
     range_msg = (
         f"(entre las {hours[0]} y las {hours[1]})"
-        if frame_type != "valle"
+        if frame_name != "valle"
         else "(entre las 00:00 y las 8:00)" if now.weekday() <= 4 else "(todo el día)"
     )
     message = f"{BUTTON_SYMBOLS[frame_name]} {'Empieza' if now.hour == start.hour else 'Estamos en'} periodo {frame_name} {range_msg}. Precios PVPC\n"
@@ -208,7 +207,7 @@ def main():
         return
 
     time_frame_info = get_time_frame(now, weekday)
-    min_max_prices = find_min_max_prices(data, time_frame_info[3])
+    min_max_prices = find_min_max_prices(data, time_frame_info[2])
     message = generate_message(now, data, time_frame_info, min_max_prices)
 
     if len(message) > 280:
