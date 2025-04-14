@@ -31,21 +31,24 @@ TIME_RANGES = {
 BUTTON_SYMBOLS = {"llano": "🟠", "valle": "🟢", "punta": "🔴"}
 CACHE_DIR = "/tmp"
 
-clock = ['🕛', '🕐', '🕑', '🕒', '🕓', '🕔', 
-         '🕕', '🕖', '🕗', '🕘', '🕙', '🕚']
+clock = ["🕛", "🕐", "🕑", "🕒", "🕓", "🕔", "🕕", "🕖", "🕗", "🕘", "🕙", "🕚"]
 
 logging.basicConfig(
     stream=sys.stdout, level=logging.INFO, format="%(asctime)s %(message)s"
 )
+
 
 def parse_arguments():
     """Analiza los argumentos de línea de comandos."""
     parser = argparse.ArgumentParser(description="Procesa argumentos para el script.")
 
     parser.add_argument("-s", action="store_true", help="Activa el modo de simulación.")
-    parser.add_argument("-t", nargs="?", const="21:00", help="Establece la hora (formato HH:MM).")
+    parser.add_argument(
+        "-t", nargs="?", const="21:00", help="Establece la hora (formato HH:MM)."
+    )
 
     return parser.parse_args()
+
 
 def get_cached_data(filepath):
     """Retrieves data from a cached file."""
@@ -54,6 +57,7 @@ def get_cached_data(filepath):
         with open(filepath, "r") as f:
             return json.load(f)
     return None
+
 
 def fetch_api_data(url):
     """Fetches data from the API with retry logic."""
@@ -142,12 +146,13 @@ def get_time_frame(now, weekday):
             end = convert_time_to_datetime(frame[1])
             if start <= now < end:
                 break
-    return ( 
-            start, 
-            end, 
-            frame, 
-            frame_type if not frame_type[-1].isdigit() else frame_type[:-1],
-            )
+    return (
+        start,
+        end,
+        frame,
+        frame_type if not frame_type[-1].isdigit() else frame_type[:-1],
+    )
+
 
 def find_min_max_prices(data, hours):
     """Finds the min and max prices within a given time range."""
@@ -182,6 +187,7 @@ def generate_message(now, data, time_frame_info, min_max_prices):
         message += f"Máx: {max_price:.3f}, entre las {max_hour}:00 y las {max_hour + 1}:00 (hora más cara)"
     return message
 
+
 def generate_table(values, min_day, max_day):
     """Generates a table string from price values."""
     table = ""
@@ -199,6 +205,7 @@ def generate_table(values, min_day, max_day):
         if (i + 1) % 4 == 0:
             table += "|\n"
     return table + "\n"
+
 
 def generate_chart_js(values, min_day, max_day, now_next):
     """Generates JavaScript code for a Chart.js chart."""
@@ -228,17 +235,43 @@ def generate_chart_js(values, min_day, max_day, now_next):
     """
     return js
 
+
 def generate_plotly_graph(prices, now_next):
     """Generates and saves a Plotly graph to HTML."""
     # prices = [float(val['PCB'].replace(',', '.')) / 1000 for val in data["PVPC"]]
     max_price, min_price = max(prices), min(prices)
     max_index, min_index = prices.index(max_price), prices.index(min_price)
-    df = pd.DataFrame({'Hora': range(len(prices)), 'Precio': prices})
-    fig = px.line(df, x='Hora', y='Precio', markers=True, title=f"[@botElectrico] PVPC. Evolución precio para el día {str(now_next).split(' ')[0]}")
-    fig.add_annotation(x=max_index, y=max_price, text=f"{max_price:.3f}", font=dict(color="#ffffff"), bgcolor="tomato", arrowcolor="tomato", showarrow=True, xanchor="right")
-    fig.add_annotation(x=min_index, y=min_price, text=f"{min_price:.3f}", font=dict(color="#ffffff"), bgcolor="MediumSeaGreen", arrowcolor="MediumSeaGreen", showarrow=True, xanchor="left")
-    with open('/tmp/plotly_graph.html', 'w') as f:
-        f.write(fig.to_html(include_plotlyjs='cdn', full_html=False))
+    df = pd.DataFrame({"Hora": range(len(prices)), "Precio": prices})
+    fig = px.line(
+        df,
+        x="Hora",
+        y="Precio",
+        markers=True,
+        title=f"[@botElectrico] PVPC. Evolución precio para el día {str(now_next).split(' ')[0]}",
+    )
+    fig.add_annotation(
+        x=max_index,
+        y=max_price,
+        text=f"{max_price:.3f}",
+        font=dict(color="#ffffff"),
+        bgcolor="tomato",
+        arrowcolor="tomato",
+        showarrow=True,
+        xanchor="right",
+    )
+    fig.add_annotation(
+        x=min_index,
+        y=min_price,
+        text=f"{min_price:.3f}",
+        font=dict(color="#ffffff"),
+        bgcolor="MediumSeaGreen",
+        arrowcolor="MediumSeaGreen",
+        showarrow=True,
+        xanchor="left",
+    )
+    with open("/tmp/plotly_graph.html", "w") as f:
+        f.write(fig.to_html(include_plotlyjs="cdn", full_html=False))
+
 
 def generate_matplotlib_graph(values, now_next):
     """Generates and saves a Matplotlib graph to PNG and SVG."""
@@ -250,12 +283,26 @@ def generate_matplotlib_graph(values, now_next):
     plt.ylabel("Precio")
     plt.xticks(range(0, 24, 4))
     plt.gca().xaxis.set_major_formatter(matplotlib.ticker.StrMethodFormatter("{x:.2f}"))
-    arrowprops = dict(arrowstyle='simple', linewidth=0.0001, color='paleturquoise')
-    plt.annotate(f'Max: {max_price:.3f} ({max_index}:00)', xy=(max_index, max_price), xytext=(0, max_price - 0.002), arrowprops=arrowprops)
-    plt.annotate(f'Min: {min_price:.3f} ({min_index}:00)', xy=(min_index, min_price), xytext=(0.5, max_price - 0.01), arrowprops=arrowprops)
+    arrowprops = dict(arrowstyle="simple", linewidth=0.0001, color="paleturquoise")
+    plt.annotate(
+        f"Max: {max_price:.3f} ({max_index}:00)",
+        xy=(max_index, max_price),
+        xytext=(0, max_price - 0.002),
+        arrowprops=arrowprops,
+    )
+    plt.annotate(
+        f"Min: {min_price:.3f} ({min_index}:00)",
+        xy=(min_index, min_price),
+        xytext=(0.5, max_price - 0.01),
+        arrowprops=arrowprops,
+    )
     plt.plot(values)
-    png_path = f"{CACHE_DIR}/{now_next.year}-{now_next.month:02d}-{now_next.day:02d}_image.png"
-    svg_path = f"{CACHE_DIR}/{now_next.year}-{now_next.month:02d}-{now_next.day:02d}_image.svg"
+    png_path = (
+        f"{CACHE_DIR}/{now_next.year}-{now_next.month:02d}-{now_next.day:02d}_image.png"
+    )
+    svg_path = (
+        f"{CACHE_DIR}/{now_next.year}-{now_next.month:02d}-{now_next.day:02d}_image.svg"
+    )
     plt.savefig(png_path)
     plt.savefig(svg_path)
     plt.close()
@@ -272,7 +319,7 @@ def main():
         if args.t:
             t_now = args.t
         else:
-            t_now = "21:00" 
+            t_now = "21:00"
         now = convert_time_to_datetime(t_now)
     elif not now:
         now = datetime.datetime.now()
@@ -292,12 +339,12 @@ def main():
         logging.warning("Message too long. Truncating.")
         message = message[:280]
 
-    destinations = { 
-                    "twitter": "fernand0Test" if args.t else "botElectrico", 
-                    "telegram": "testFernand0" if args.t else "botElectrico", 
-                    "mastodon": "@fernand0Test@fosstodon.org" if args.t else "@botElectrico@mas.to", 
-                    "blsk": None if args.t else "botElectrico.bsky.social" 
-                    }
+    destinations = {
+        "twitter": "fernand0Test" if args.t else "botElectrico",
+        "telegram": "testFernand0" if args.t else "botElectrico",
+        "mastodon": "@fernand0Test@fosstodon.org" if args.t else "@botElectrico@mas.to",
+        "blsk": None if args.t else "botElectrico.bsky.social",
+    }
     logging.info(f"Destinations: {destinations}")
 
     rules = socialModules.moduleRules.moduleRules()
@@ -306,57 +353,64 @@ def main():
     if now.hour == 21:
         next_day = now + datetime.timedelta(days=1)
         next_day_data = get_data(next_day)
-        prices = [float(val['PCB'].replace(',', '.')) / 1000 for val in next_day_data["PVPC"]]
+        prices = [
+            float(val["PCB"].replace(",", ".")) / 1000 for val in next_day_data["PVPC"]
+        ]
         png_path, min_day, max_day = generate_matplotlib_graph(prices, next_day)
         generate_plotly_graph(prices, next_day)
         table = generate_table(prices, min_day, max_day)
-        js_code = generate_chart_js(prices, min_day, max_day, str(next_day).split(' ')[0])
-        with open(f"/tmp/kk.js", 'w') as f:
+        js_code = generate_chart_js(
+            prices, min_day, max_day, str(next_day).split(" ")[0]
+        )
+        with open(f"/tmp/kk.js", "w") as f:
             f.write(js_code)
 
-        date_post = str(now).split(' ')[0]
-        date_next_day = str(next_day).split(' ')[0]
+        date_post = str(now).split(" ")[0]
+        date_next_day = str(next_day).split(" ")[0]
         title = f"Evolución precio para el día {date_next_day}"
         alt_text = f"{title}. Mínimo a las {min_day[0]}:00 ({min_day[1]:.3f}). Máximo a las {max_day[0]}:00 ({max_day[1]:.3f})."
-        image = open(f"{png_path[:-4]}.svg", 'r').read()
-        graph_html = open('/tmp/plotly_graph.html', 'r').read()
-        markdown_content = (f"---\n"
-                            "layout: post\n"
-                            f"title:  '{title}'\n"
-                            f"date:   {date_post} 21:00:59 +0200\n"
-                            "categories: jekyll update\n"
-                            "---\n\n" 
-                            f"{alt_text}\n\n"
-                            #f"{image}\n\n"
-                            f"{graph_html}\n\n"
-                            f"{table}"
-                            )
-        with open(f"{CACHE_DIR}/{now.year}-{now.month:02d}-{now.day:02d}-post.md", 'w') as f:
+        image = open(f"{png_path[:-4]}.svg", "r").read()
+        graph_html = open("/tmp/plotly_graph.html", "r").read()
+        markdown_content = (
+            f"---\n"
+            "layout: post\n"
+            f"title:  '{title}'\n"
+            f"date:   {date_post} 21:00:59 +0200\n"
+            "categories: jekyll update\n"
+            "---\n\n"
+            f"{alt_text}\n\n"
+            # f"{image}\n\n"
+            f"{graph_html}\n\n"
+            f"{table}"
+        )
+        with open(
+            f"{CACHE_DIR}/{now.year}-{now.month:02d}-{now.day:02d}-post.md", "w"
+        ) as f:
             f.write(markdown_content)
 
-        for destination, account in destinations.items():
-            key = ('direct', 'post', destination, account)
+    for destination, account in destinations.items():
+        logging.info(f" Now in: {destination} - {account}")
+        if account:
+            key = ("direct", "post", destination, account)
             # api = getApi(destination, account)
             api = rules.readConfigDst("", key, None, None)
-            try:
-                result = api.publishImage(title, png_path, alt=alt_text)
-                if hasattr(api, 'lastRes') and api.lastRes and 'media_attachments' in api.lastRes and api.lastRes['media_attachments'] and 'url' in api.lastRes['media_attachments'][0]:
-                    image_url = api.lastRes['media_attachments'][0]['url']
-                else:
+            if now.hour == 21:
+                try:
+                    result = api.publishImage(title, png_path, alt=alt_text)
+                    if (
+                        hasattr(api, "lastRes")
+                        and api.lastRes
+                        and "media_attachments" in api.lastRes
+                        and api.lastRes["media_attachments"]
+                        and "url" in api.lastRes["media_attachments"][0]
+                    ):
+                        image_url = api.lastRes["media_attachments"][0]["url"]
+                    else:
+                        image_url = None
+                except Exception as e:
+                    logging.error(f"Failed to publish image to {destination}: {e}")
                     image_url = None
-            except Exception as e:
-                logging.error(f"Failed to publish image to {destination}: {e}")
-                image_url = None
 
-            api.publishPost(message, "", "")
-            logging.info(f"Published to {destination}: {result}")
-    else:
-        for destination, account in destinations.items():
-            logging.info(f" Now in: {destination} - {account}")
-            key = ('direct', 'post', destination, account)
-            # api = getApi(destination, account)
-            api = rules.readConfigDst("", key, None, None)
-            # api = getApi(destination, account)
             result = api.publishPost(message, "", "")
             logging.info(f"Published to {destination}: {result}")
 
