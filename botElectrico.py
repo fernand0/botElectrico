@@ -393,7 +393,8 @@ def main():
         if account:
             key = ("direct", "post", destination, account)
             # api = getApi(destination, account)
-            api = rules.readConfigDst("", key, None, None)
+            indent = "  "
+            api = rules.readConfigDst(indent, key, None, None)
             if now.hour == 21:
                 try:
                     result = api.publishImage(title, png_path, alt=alt_text)
