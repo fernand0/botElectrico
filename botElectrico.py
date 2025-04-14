@@ -14,6 +14,8 @@ import matplotlib.ticker
 import pandas as pd
 from plotly import express as px
 
+import socialModules
+import socialModules.moduleRules
 from socialModules.configMod import getApi
 
 API_BASE = "https://apidatos.ree.es/"
@@ -226,9 +228,9 @@ def generate_chart_js(values, min_day, max_day, now_next):
     """
     return js
 
-def generate_plotly_graph(data, now_next):
+def generate_plotly_graph(prices, now_next):
     """Generates and saves a Plotly graph to HTML."""
-    prices = [float(val['PCB'].replace(',', '.')) / 1000 for val in data["PVPC"]]
+    # prices = [float(val['PCB'].replace(',', '.')) / 1000 for val in data["PVPC"]]
     max_price, min_price = max(prices), min(prices)
     max_index, min_index = prices.index(max_price), prices.index(min_price)
     df = pd.DataFrame({'Hora': range(len(prices)), 'Precio': prices})
@@ -257,17 +259,12 @@ def generate_matplotlib_graph(values, now_next):
     plt.savefig(png_path)
     plt.savefig(svg_path)
     plt.close()
-    return png_path, (min_index, min_price), (max_index, max_price), values
+    return png_path, (min_index, min_price), (max_index, max_price)
 
 
 def main():
     mode = None
     now = None
-    # if len(sys.argv) > 1:
-    #     if sys.argv[1] == "-t":
-    #         mode = "test"
-    #         if len(sys.argv) > 2:
-    #             now = convert_time_to_datetime(sys.argv[2])
     args = parse_arguments()
     print(args)
 
@@ -295,40 +292,25 @@ def main():
         logging.warning("Message too long. Truncating.")
         message = message[:280]
 
-    destinations = {
-        "twitter": "fernand0Test" if args.s else "botElectrico",
-        "telegram": "testFernand0" if args.s else "botElectrico",
-        "mastodon": "@fernand0Test@fosstodon.org" if args.s else "@botElectrico@mas.to",
-        "blsk": None if args.s else "botElectrico.bsky.social",
-    }
+    destinations = { 
+                    "twitter": "fernand0Test" if args.t else "botElectrico", 
+                    "telegram": "testFernand0" if args.t else "botElectrico", 
+                    "mastodon": "@fernand0Test@fosstodon.org" if args.t else "@botElectrico@mas.to", 
+                    "blsk": None if args.t else "botElectrico.bsky.social" 
+                    }
     logging.info(f"Destinations: {destinations}")
 
-    if len(message) > 280:
-        logging.warning("Message too long. Truncating.")
-        message = message[:280]
-
-    if args.s:
-        destinations = { 
-                        "twitter": "fernand0Test", 
-                        "telegram": "testFernand0" 
-                        }
-    else: 
-        destinations = { 
-                        "twitter": "fernand0Test" if mode == 'test' else "botElectrico", 
-                        "telegram": "testFernand0" if mode == 'test' else "botElectrico", 
-                        "mastodon": "@botElectrico@mas.to", 
-                        "blsk": "botElectrico.bsky.social" 
-                        }
-    logging.info(f"Destinations: {destinations}")
+    rules = socialModules.moduleRules.moduleRules()
+    rules.checkRules()
 
     if now.hour == 21:
         next_day = now + datetime.timedelta(days=1)
         next_day_data = get_data(next_day)
-        png_path, min_day, max_day, values = generate_matplotlib_graph(
-            [float(val['PCB'].replace(',', '.')) / 1000 for val in next_day_data["PVPC"]], next_day)
-        generate_plotly_graph(next_day_data, next_day)
-        table = generate_table(values, min_day, max_day)
-        js_code = generate_chart_js(values, min_day, max_day, str(next_day).split(' ')[0])
+        prices = [float(val['PCB'].replace(',', '.')) / 1000 for val in next_day_data["PVPC"]]
+        png_path, min_day, max_day = generate_matplotlib_graph(prices, next_day)
+        generate_plotly_graph(prices, next_day)
+        table = generate_table(prices, min_day, max_day)
+        js_code = generate_chart_js(prices, min_day, max_day, str(next_day).split(' ')[0])
         with open(f"/tmp/kk.js", 'w') as f:
             f.write(js_code)
 
@@ -336,6 +318,8 @@ def main():
         date_next_day = str(next_day).split(' ')[0]
         title = f"Evolución precio para el día {date_next_day}"
         alt_text = f"{title}. Mínimo a las {min_day[0]}:00 ({min_day[1]:.3f}). Máximo a las {max_day[0]}:00 ({max_day[1]:.3f})."
+        image = open(f"{png_path[:-4]}.svg", 'r').read()
+        graph_html = open('/tmp/plotly_graph.html', 'r').read()
         markdown_content = (f"---\n"
                             "layout: post\n"
                             f"title:  '{title}'\n"
@@ -343,16 +327,17 @@ def main():
                             "categories: jekyll update\n"
                             "---\n\n" 
                             f"{alt_text}\n\n"
-                            f"{open(f"{png_path[:-4]}.svg", 'r').read()}\n\n"
-                            f"{open('/tmp/plotly_graph.html', 'r').read()}\n\n"
+                            f"{image}\n\n"
+                            f"{graph_html}\n\n"
                             f"{table}"
                             )
         with open(f"{CACHE_DIR}/{now.year}-{now.month:02d}-{now.day:02d}-post.md", 'w') as f:
             f.write(markdown_content)
 
-        return
         for destination, account in destinations.items():
-            api = getApi(destination, account)
+            key = ('direct', 'post', destination, account)
+            # api = getApi(destination, account)
+            api = rules.readConfigDst("", key, None, None)
             try:
                 result = api.publishImage(title, png_path, alt=alt_text)
                 if hasattr(api, 'lastRes') and api.lastRes and 'media_attachments' in api.lastRes and api.lastRes['media_attachments'] and 'url' in api.lastRes['media_attachments'][0]:
@@ -367,7 +352,11 @@ def main():
             logging.info(f"Published to {destination}: {result}")
     else:
         for destination, account in destinations.items():
-            api = getApi(destination, account)
+            logging.info(f" Now in: {destination} - {account}")
+            key = ('direct', 'post', destination, account)
+            # api = getApi(destination, account)
+            api = rules.readConfigDst("", key, None, None)
+            # api = getApi(destination, account)
             result = api.publishPost(message, "", "")
             logging.info(f"Published to {destination}: {result}")
 
