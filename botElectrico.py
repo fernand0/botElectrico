@@ -49,6 +49,16 @@ def parse_arguments():
 
     return parser.parse_args()
 
+def safe_get(data, keys, default=""):
+    """Safely retrieves nested values from a dictionary."""
+    try:
+        for key in keys:
+            data = data[key]
+        return data
+    except (KeyError, TypeError):
+        return default
+
+
 def file_name(now):
     return f"{now.year}-{now.month:02d}-{now.day:02d}"
 
@@ -100,27 +110,31 @@ def get_data(now):
     return data
 
 
-def get_price_and_next(data, hour):
+def get_price_and_next(data, now):
     """Retrieves the current and next hour's prices."""
-    current_price = float(data["PVPC"][hour]["PCB"].replace(",", ".")) / 1000
-    next_hour = hour + 1
-    if next_hour < 24:
-        next_price = float(data["PVPC"][next_hour]["PCB"].replace(",", ".")) / 1000
+    price = safe_get(data, ['PVPC', now.hour,'PCB'])
+    current_price = float(price.replace(",", ".")) / 1000
+    next_now = now + datetime.timedelta(hours=1)
+    if next_now.day == now.day:
+        next_data = data
     else:
-        next_day = datetime.datetime.now() + datetime.timedelta(hours=1)
-        next_day_data = get_data(next_day)
-        next_price = float(next_day_data["PVPC"][0]["PCB"].replace(",", ".")) / 1000
+        next_data = get_data(next_now)
+    price = safe_get(next_data, ['PVPC',next_now.hour,'PCB'])
+    next_price = float(price.replace(",", ".")) / 1000
+
     return current_price, next_price
 
 
 def get_price_trend_symbol(current_price, next_price):
     """Determines the price trend symbol."""
     if next_price > current_price:
-        return "↗"
+        symbol = "↗"
     elif next_price < current_price:
-        return "↘"
+        symbol = "↘"
     else:
-        return "↔"
+        symbol = "↔"
+
+    return symbol
 
 
 def convert_time_to_datetime(time_str):
@@ -175,21 +189,30 @@ def find_min_max_prices(data, frame):
 def generate_message(now, data, time_frame_info, min_max_prices):
     """Generates the message to be published."""
     start, end, frame, frame_name = time_frame_info
-    current_price, next_price = get_price_and_next(data, now.hour)
+    current_price, next_price = get_price_and_next(data, now)
     price_trend = get_price_trend_symbol(current_price, next_price)
     range_msg = (
         f"(entre las {frame[0]} y las {frame[1]})"
         if frame_name != "valle"
-        else "(entre las 00:00 y las 8:00)" if now.weekday() <= 4 else "(todo el día)"
+        else "(entre las 00:00 y las 8:00)" if now.weekday() <= 4 
+        else "(todo el día)"
     )
-    message = f"{BUTTON_SYMBOLS[frame_name]} {'Empieza' if now.hour == start.hour else 'Estamos en'} periodo {frame_name} {range_msg}. Precios PVPC\n"
-    message += f"En esta hora: {current_price:.3f}\nEn la hora siguiente: {next_price:.3f}{price_trend}\n"
-    hour_time_frame_info = time_frame_info[0].hour
-    if (hour_time_frame_info == now.hour) and min_max_prices:
+    message = (f"{BUTTON_SYMBOLS[frame_name]} "
+               f"{'Empieza' if now.hour == start.hour else 'Estamos en'} "
+               f"periodo {frame_name} {range_msg}. Precios PVPC\n"
+               )
+    message += (f"En esta hora: {current_price:.3f}\n"
+                f"En la hora siguiente: {next_price:.3f}{price_trend}\n"
+                )
+    if (start.hour == now.hour) and min_max_prices:
         min_hour, min_price = min_max_prices[0]
         max_hour, max_price = min_max_prices[1]
-        message += f"Mín: {min_price:.3f}, entre las {min_hour}:00 y las {min_hour + 1}:00 (hora más económica)\n"
-        message += f"Máx: {max_price:.3f}, entre las {max_hour}:00 y las {max_hour + 1}:00 (hora más cara)"
+        message += (f"Mín: {min_price:.3f}, entre las {min_hour}:00 "
+                    f"y las {min_hour + 1}:00 (hora más económica)\n"
+                    )
+        message += (f"Máx: {max_price:.3f}, entre las {max_hour}:00 "
+                    f"y las {max_hour + 1}:00 (hora más cara)"
+                    )
     return message
 
 
@@ -342,15 +365,12 @@ def main():
         message = message[:280]
 
     destinations = {
-        "twitter": "fernand0Test" if args.t else "botElectrico",
-        "telegram": "testFernand0" if args.t else "botElectrico",
-        "mastodon": "@fernand0Test@fosstodon.org" if args.t else "@botElectrico@mas.to",
-        "blsk": None if args.t else "botElectrico.bsky.social",
+        "twitter": "fernand0Test" if args.s else "botElectrico",
+        "telegram": "testFernand0" if args.s else "botElectrico",
+        "mastodon": "@fernand0Test@fosstodon.org" if args.s else "@botElectrico@mas.to",
+        "blsk": None if args.s else "botElectrico.bsky.social",
     }
     logging.info(f"Destinations: {destinations}")
-
-    rules = socialModules.moduleRules.moduleRules()
-    rules.checkRules()
 
     if now.hour == 21:
         next_day = now + datetime.timedelta(days=1)
@@ -389,6 +409,9 @@ def main():
             f"{CACHE_DIR}/{file_name(now)}-post.md", "w"
         ) as f:
             f.write(markdown_content)
+
+    rules = socialModules.moduleRules.moduleRules()
+    rules.checkRules()
 
     for destination, account in destinations.items():
         logging.info(f" Now in: {destination} - {account}")
