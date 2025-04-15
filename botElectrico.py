@@ -368,7 +368,8 @@ def main():
         next_day = now + datetime.timedelta(days=1)
         next_day_data = get_data(next_day)
         prices = [
-            float(val["PCB"].replace(",", ".")) / 1000 for val in next_day_data["PVPC"]
+            float(val["PCB"].replace(",", ".")) / 1000 
+            for val in next_day_data["PVPC"]
         ]
         png_path, min_day, max_day = generate_matplotlib_graph(prices, next_day)
         generate_plotly_graph(prices, next_day)
