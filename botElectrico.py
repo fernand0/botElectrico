@@ -133,8 +133,9 @@ def convert_time_to_datetime(time_str):
     return datetime.datetime.strptime(f"{now} {time_str}", "%Y-%m-%d %H:%M")
 
 
-def get_time_frame(now, weekday):
+def get_time_frame(now):
     """Determines the current time frame."""
+    weekday = now.weekday()
     if weekday > 4:
         frame = ["00:00", "24:00"]
         frame_type = "valle"
@@ -313,7 +314,6 @@ def main():
     mode = None
     now = None
     args = parse_arguments()
-    print(args)
 
     if args.s:
         if args.t:
@@ -323,15 +323,13 @@ def main():
         now = convert_time_to_datetime(t_now)
     elif not now:
         now = datetime.datetime.now()
-    print(f"Now: {now}")
 
-    weekday = now.weekday()
     data = get_data(now)
     if not data:
         logging.error("Failed to retrieve data. Exiting.")
         return
 
-    time_frame_info = get_time_frame(now, weekday)
+    time_frame_info = get_time_frame(now)
     min_max_prices = find_min_max_prices(data, time_frame_info[2])
     message = generate_message(now, data, time_frame_info, min_max_prices)
 
