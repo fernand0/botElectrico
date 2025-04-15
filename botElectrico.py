@@ -49,6 +49,8 @@ def parse_arguments():
 
     return parser.parse_args()
 
+def file_name(now):
+    return f"{now.year}-{now.month:02d}-{now.day:02d}"
 
 def get_cached_data(filepath):
     """Retrieves data from a cached file."""
@@ -86,19 +88,16 @@ def save_data_to_cache(filepath, data):
 
 def get_data(now):
     """Retrieves PVPC data, either from cache or API."""
-    filepath = os.path.join(
-        CACHE_DIR, f"{now.year}-{now.month:02d}-{now.day:02d}_data.json"
-    )
-    cached_data = get_cached_data(filepath)
-    if cached_data:
-        return cached_data
+    filepath = os.path.join(CACHE_DIR, f"{file_name(now)}_data.json")
+    data = get_cached_data(filepath)
+    if not data: 
+        url = "https://api.esios.ree.es/archives/70/download_json"  
+        # simplified the URL
+        data = fetch_api_data(url)
+        if data:
+            save_data_to_cache(filepath, data)
 
-    url = "https://api.esios.ree.es/archives/70/download_json"  # simplified the URL
-    data = fetch_api_data(url)
-    if data:
-        save_data_to_cache(filepath, data)
-        return data
-    return None
+    return data
 
 
 def get_price_and_next(data, hour):
@@ -136,7 +135,10 @@ def convert_time_to_datetime(time_str):
 def get_time_frame(now):
     """Determines the current time frame."""
     weekday = now.weekday()
+    start = ''
+    end = ''
     if weekday > 4:
+        # Weekend
         frame = ["00:00", "24:00"]
         frame_type = "valle"
         start = convert_time_to_datetime(frame[0])
@@ -155,26 +157,28 @@ def get_time_frame(now):
     )
 
 
-def find_min_max_prices(data, hours):
+def find_min_max_prices(data, frame):
     """Finds the min and max prices within a given time range."""
-    start_hour = int(hours[0].split(":")[0])
-    end_hour = int(hours[1].split(":")[0]) if hours[1] != "00:00" else 24
+    start_hour = int(frame[0].split(":")[0])
+    end_hour = int(frame[1].split(":")[0]) if frame[1] != "00:00" else 24
     prices = [
         float(val["PCB"].replace(",", ".")) / 1000
         for val in data["PVPC"][start_hour:end_hour]
     ]
     min_price, max_price = min(prices), max(prices)
     min_index, max_index = prices.index(min_price), prices.index(max_price)
-    return (start_hour + min_index, min_price), (start_hour + max_index, max_price)
+    return ((start_hour + min_index, min_price), 
+            (start_hour + max_index, max_price)
+            )
 
 
 def generate_message(now, data, time_frame_info, min_max_prices):
     """Generates the message to be published."""
-    start, end, hours, frame_name = time_frame_info
+    start, end, frame, frame_name = time_frame_info
     current_price, next_price = get_price_and_next(data, now.hour)
     price_trend = get_price_trend_symbol(current_price, next_price)
     range_msg = (
-        f"(entre las {hours[0]} y las {hours[1]})"
+        f"(entre las {frame[0]} y las {frame[1]})"
         if frame_name != "valle"
         else "(entre las 00:00 y las 8:00)" if now.weekday() <= 4 else "(todo el día)"
     )
@@ -382,7 +386,7 @@ def main():
             f"{table}"
         )
         with open(
-            f"{CACHE_DIR}/{now.year}-{now.month:02d}-{now.day:02d}-post.md", "w"
+            f"{CACHE_DIR}/{file_name(now)}-post.md", "w"
         ) as f:
             f.write(markdown_content)
 
