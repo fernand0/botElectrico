@@ -364,14 +364,6 @@ def main():
         logging.warning("Message too long. Truncating.")
         message = message[:280]
 
-    destinations = {
-        "twitter": "fernand0Test" if args.s else "botElectrico",
-        "telegram": "testFernand0" if args.s else "botElectrico",
-        "mastodon": "@fernand0Test@fosstodon.org" if args.s else "@botElectrico@mas.to",
-        "blsk": None if args.s else "botElectrico.bsky.social",
-    }
-    logging.info(f"Destinations: {destinations}")
-
     if now.hour == 21:
         next_day = now + datetime.timedelta(days=1)
         next_day_data = get_data(next_day)
@@ -412,6 +404,15 @@ def main():
 
     rules = socialModules.moduleRules.moduleRules()
     rules.checkRules()
+
+    destinations = {
+        "twitter": "fernand0Test" if args.s else "botElectrico",
+        "telegram": "testFernand0" if args.s else "botElectrico",
+        "mastodon": "@fernand0Test@fosstodon.org" if args.s else "@botElectrico@mas.to",
+        "blsk": None if args.s else "botElectrico.bsky.social",
+    }
+    logging.info(f"Destinations: {destinations}")
+
 
     for destination, account in destinations.items():
         logging.info(f" Now in: {destination} - {account}")
