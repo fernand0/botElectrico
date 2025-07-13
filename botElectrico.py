@@ -367,7 +367,7 @@ def generar_resumen_diario(now, destinations, rules, message):
         "categories: jekyll update\n"
         "---\n\n"
         f"{alt_text}\n\n"
-        "# f\"{image}\n\n"
+        "# f\"\\{image}\"\n\n"
         f"{graph_html}\n\n"
         f"{table}"
     )
