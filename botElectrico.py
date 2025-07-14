@@ -19,7 +19,7 @@ import socialModules.moduleRules
 from socialModules.configMod import getApi
 
 API_BASE = "https://apidatos.ree.es/"
-CLOCK_SYMBOLS = ["", "", "", "", "", "", "", "", "", "", "", ""]
+API_URL = "https://api.esios.ree.es/archives/70/download_json"
 TIME_RANGES = {
     "llano1": ["08:00", "10:00"],
     "punta1": ["10:00", "14:00"],
@@ -59,10 +59,10 @@ def safe_get(data, keys, default=""):
         return default
 
 
-def file_name(now):
+def file_name(now: datetime.datetime) -> str:
     return f"{now.year}-{now.month:02d}-{now.day:02d}"
 
-def get_cached_data(filepath):
+def get_cached_data(filepath: str) -> dict | None:
     """Retrieves data from a cached file."""
     if os.path.exists(filepath):
         logging.info("Retrieving cached data.")
@@ -71,46 +71,43 @@ def get_cached_data(filepath):
     return None
 
 
-def fetch_api_data(url):
+def fetch_api_data(url: str) -> dict | None:
     """Fetches data from the API with retry logic."""
-    data = None
-    while not data:
+    retries = 3
+    while retries > 0:
         try:
             result = requests.get(url)
             result.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
             data = json.loads(result.content)
             if "errors" not in data and "PVPC" in data:
                 return data
-            else:
-                data = None
         except requests.exceptions.RequestException as e:
             logging.error(f"Error fetching data: {e}")
         logging.info("Waiting to see if data becomes available.")
         time.sleep(300)
+        retries -= 1
     return None
 
 
-def save_data_to_cache(filepath, data):
+def save_data_to_cache(filepath: str, data: dict) -> None:
     """Saves data to a cached file."""
     with open(filepath, "w") as f:
         json.dump(data, f)
 
 
-def get_data(now):
+def get_data(now: datetime.datetime) -> dict | None:
     """Retrieves PVPC data, either from cache or API."""
     filepath = os.path.join(CACHE_DIR, f"{file_name(now)}_data.json")
     data = get_cached_data(filepath)
     if not data: 
-        url = "https://api.esios.ree.es/archives/70/download_json"  
-        # simplified the URL
-        data = fetch_api_data(url)
+        data = fetch_api_data(API_URL)
         if data:
             save_data_to_cache(filepath, data)
 
     return data
 
 
-def get_price_and_next(data, now):
+def get_price_and_next(data: dict, now: datetime.datetime) -> tuple[float, float]:
     """Retrieves the current and next hour's prices."""
     price = safe_get(data, ['PVPC', now.hour,'PCB'])
     current_price = float(price.replace(",", ".")) / 1000
@@ -125,7 +122,7 @@ def get_price_and_next(data, now):
     return current_price, next_price
 
 
-def get_price_trend_symbol(current_price, next_price):
+def get_price_trend_symbol(current_price: float, next_price: float) -> str:
     """Determines the price trend symbol."""
     if next_price > current_price:
         symbol = "↗"
@@ -137,7 +134,7 @@ def get_price_trend_symbol(current_price, next_price):
     return symbol
 
 
-def convert_time_to_datetime(time_str):
+def convert_time_to_datetime(time_str: str) -> datetime.datetime:
     """Converts a time string to a datetime object."""
     now = datetime.datetime.now().date()
     if time_str == "24:00":
@@ -146,7 +143,7 @@ def convert_time_to_datetime(time_str):
     return datetime.datetime.strptime(f"{now} {time_str}", "%Y-%m-%d %H:%M")
 
 
-def get_time_frame(now):
+def get_time_frame(now: datetime.datetime) -> tuple[datetime.datetime, datetime.datetime, list[str], str]:
     """Determines the current time frame."""
     weekday = now.weekday()
     start = ''
@@ -171,7 +168,7 @@ def get_time_frame(now):
     )
 
 
-def find_min_max_prices(data, frame):
+def find_min_max_prices(data: dict, frame: list[str]) -> tuple[tuple[int, float], tuple[int, float]]:
     """Finds the min and max prices within a given time range."""
     start_hour = int(frame[0].split(":")[0])
     end_hour = int(frame[1].split(":")[0]) if frame[1] != "00:00" else 24
@@ -186,7 +183,7 @@ def find_min_max_prices(data, frame):
             )
 
 
-def generate_message(now, data, time_frame_info, min_max_prices):
+def generate_message(now: datetime.datetime, data: dict, time_frame_info: tuple, min_max_prices: tuple) -> str:
     """Generates the message to be published."""
     start, end, frame, frame_name = time_frame_info
     current_price, next_price = get_price_and_next(data, now)
@@ -216,12 +213,15 @@ def generate_message(now, data, time_frame_info, min_max_prices):
     return message
 
 
-def generate_table(values, min_day, max_day):
+def generate_table(values: list[float], min_day: tuple[int, float], max_day: tuple[int, float]) -> str:
     """Generates a table string from price values."""
     table = ""
     for i, price in enumerate(values):
-        prev_price = values[i - 1] if i > 0 else 1000  # FIXME: Handle first element
-        price_text = f"{CLOCK_SYMBOLS[i % 12]} ({i:02d}:00) {get_price_trend_symbol(price, prev_price)} {price:.3f}"
+        price_text = f"{clock[i % 12]} ({i:02d}:00) "
+        if i > 0:
+            prev_price = values[i - 1]
+            price_text += f"{get_price_trend_symbol(price, prev_price)} "
+        price_text += f"{price:.3f}"
         color = ""
         if i == max_day[0]:
             color = "Tomato"
@@ -235,7 +235,7 @@ def generate_table(values, min_day, max_day):
     return table + "\n"
 
 
-def generate_chart_js(values, min_day, max_day, now_next):
+def generate_chart_js(values: list[float], min_day: tuple[int, float], max_day: tuple[int, float], now_next: str) -> str:
     """Generates JavaScript code for a Chart.js chart."""
     js = f"""
         import Chart from 'chart.js/auto';
@@ -264,7 +264,7 @@ def generate_chart_js(values, min_day, max_day, now_next):
     return js
 
 
-def generate_plotly_graph(prices, now_next):
+def generate_plotly_graph(prices: list[float], now_next: datetime.datetime) -> None:
     """Generates and saves a Plotly graph to HTML."""
     # prices = [float(val['PCB'].replace(',', '.')) / 1000 for val in data["PVPC"]]
     max_price, min_price = max(prices), min(prices)
@@ -301,7 +301,7 @@ def generate_plotly_graph(prices, now_next):
         f.write(fig.to_html(include_plotlyjs="cdn", full_html=False))
 
 
-def generate_matplotlib_graph(values, now_next):
+def generate_matplotlib_graph(values: list[float], now_next: datetime.datetime) -> tuple[str, tuple[int, float], tuple[int, float]]:
     """Generates and saves a Matplotlib graph to PNG and SVG."""
     max_price, min_price = max(values), min(values)
     max_index, min_index = values.index(max_price), values.index(min_price)
@@ -337,6 +337,83 @@ def generate_matplotlib_graph(values, now_next):
     return png_path, (min_index, min_price), (max_index, max_price)
 
 
+def generar_resumen_diario(now, destinations, rules, message):
+    next_day = now + datetime.timedelta(days=1)
+    next_day_data = get_data(next_day)
+    prices = [
+        float(val["PCB"].replace(",", ".")) / 1000
+        for val in next_day_data["PVPC"]
+    ]
+    png_path, min_day, max_day = generate_matplotlib_graph(prices, next_day)
+    generate_plotly_graph(prices, next_day)
+    table = generate_table(prices, min_day, max_day)
+    js_code = generate_chart_js(
+        prices, min_day, max_day, str(next_day).split(" ")[0]
+    )
+    with open(f"/tmp/kk.js", "w") as f:
+        f.write(js_code)
+
+    date_post = str(now).split(" ")[0]
+    date_next_day = str(next_day).split(" ")[0]
+    title = f"Evolución precio para el día {date_next_day}"
+    alt_text = f"{title}. Mínimo a las {min_day[0]}:00 ({min_day[1]:.3f}). Máximo a las {max_day[0]}:00 ({max_day[1]:.3f})."
+    image = open(f"{png_path[:-4]}.svg", "r").read()
+    graph_html = open("/tmp/plotly_graph.html", "r").read()
+    markdown_content = (
+        f"---\n"
+        "layout: post\n"
+        f"title:  '{title}'\n"
+        f"date:   {date_post} 21:00:59 +0200\n"
+        "categories: jekyll update\n"
+        "---\n\n"
+        f"{alt_text}\n\n"
+        "# f\"\\{image}\"\n\n"
+        f"{graph_html}\n\n"
+        f"{table}"
+    )
+    with open(
+        f"{CACHE_DIR}/{file_name(now)}-post.md", "w"
+    ) as f:
+        f.write(markdown_content)
+
+    for destination, account in destinations.items():
+        logging.info(f" Now in: {destination} - {account}")
+        if account:
+            key = ("direct", "post", destination, account)
+            # api = getApi(destination, account)
+            indent = "  "
+            api = rules.readConfigDst(indent, key, None, None)
+            try:
+                result = api.publishImage(title, png_path, alt=alt_text)
+                if (
+                    hasattr(api, "lastRes")
+                    and api.lastRes
+                    and "media_attachments" in api.lastRes
+                    and api.lastRes["media_attachments"]
+                    and "url" in api.lastRes["media_attachments"][0]
+                ):
+                    image_url = api.lastRes["media_attachments"][0]["url"]
+                else:
+                    image_url = None
+            except Exception as e:
+                logging.error(f"Failed to publish image to {destination}: {e}")
+                image_url = None
+
+            result = api.publishPost(message, "", "")
+            logging.info(f"Published to {destination}: {result}")
+
+def publicar_mensaje_horario(destinations, message, rules):
+    for destination, account in destinations.items():
+        logging.info(f" Now in: {destination} - {account}")
+        if account:
+            key = ("direct", "post", destination, account)
+            # api = getApi(destination, account)
+            indent = "  "
+            api = rules.readConfigDst(indent, key, None, None)
+            result = api.publishPost(message, "", "")
+            logging.info(f"Published to {destination}: {result}")
+
+
 def main():
     mode = None
     now = None
@@ -364,45 +441,6 @@ def main():
         logging.warning("Message too long. Truncating.")
         message = message[:280]
 
-    if now.hour == 21:
-        next_day = now + datetime.timedelta(days=1)
-        next_day_data = get_data(next_day)
-        prices = [
-            float(val["PCB"].replace(",", ".")) / 1000 
-            for val in next_day_data["PVPC"]
-        ]
-        png_path, min_day, max_day = generate_matplotlib_graph(prices, next_day)
-        generate_plotly_graph(prices, next_day)
-        table = generate_table(prices, min_day, max_day)
-        js_code = generate_chart_js(
-            prices, min_day, max_day, str(next_day).split(" ")[0]
-        )
-        with open(f"/tmp/kk.js", "w") as f:
-            f.write(js_code)
-
-        date_post = str(now).split(" ")[0]
-        date_next_day = str(next_day).split(" ")[0]
-        title = f"Evolución precio para el día {date_next_day}"
-        alt_text = f"{title}. Mínimo a las {min_day[0]}:00 ({min_day[1]:.3f}). Máximo a las {max_day[0]}:00 ({max_day[1]:.3f})."
-        image = open(f"{png_path[:-4]}.svg", "r").read()
-        graph_html = open("/tmp/plotly_graph.html", "r").read()
-        markdown_content = (
-            f"---\n"
-            "layout: post\n"
-            f"title:  '{title}'\n"
-            f"date:   {date_post} 21:00:59 +0200\n"
-            "categories: jekyll update\n"
-            "---\n\n"
-            f"{alt_text}\n\n"
-            # f"{image}\n\n"
-            f"{graph_html}\n\n"
-            f"{table}"
-        )
-        with open(
-            f"{CACHE_DIR}/{file_name(now)}-post.md", "w"
-        ) as f:
-            f.write(markdown_content)
-
     rules = socialModules.moduleRules.moduleRules()
     rules.checkRules()
 
@@ -414,33 +452,10 @@ def main():
     }
     logging.info(f"Destinations: {destinations}")
 
-
-    for destination, account in destinations.items():
-        logging.info(f" Now in: {destination} - {account}")
-        if account:
-            key = ("direct", "post", destination, account)
-            # api = getApi(destination, account)
-            indent = "  "
-            api = rules.readConfigDst(indent, key, None, None)
-            if now.hour == 21:
-                try:
-                    result = api.publishImage(title, png_path, alt=alt_text)
-                    if (
-                        hasattr(api, "lastRes")
-                        and api.lastRes
-                        and "media_attachments" in api.lastRes
-                        and api.lastRes["media_attachments"]
-                        and "url" in api.lastRes["media_attachments"][0]
-                    ):
-                        image_url = api.lastRes["media_attachments"][0]["url"]
-                    else:
-                        image_url = None
-                except Exception as e:
-                    logging.error(f"Failed to publish image to {destination}: {e}")
-                    image_url = None
-
-            result = api.publishPost(message, "", "")
-            logging.info(f"Published to {destination}: {result}")
+    if now.hour == 21:
+        generar_resumen_diario(now, destinations, rules, message)
+    else:
+        publicar_mensaje_horario(destinations, message, rules)
 
 
 if __name__ == "__main__":
