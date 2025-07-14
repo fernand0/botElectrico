@@ -10,5 +10,8 @@ Se puede seguir en :
 **Nota:** Este bot obtiene los datos de fuentes oficiales, pero es un sistema en pruebas y no ofrece garantías sobre la exactitud o disponibilidad de la información.
 
 Este proyecto está bajo la Licencia MIT. Consulta el archivo [LICENSE](LICENSE) para más detalles.
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> bc56d19dd3bb7204e6e30fd4156eac46569ba1bc
