@@ -14,24 +14,15 @@ import matplotlib.ticker
 import pandas as pd
 from plotly import express as px
 
-import socialModules
-import socialModules.moduleRules
-from socialModules.configMod import getApi
+try:
+    import socialModules.moduleRules
+    from socialModules.configMod import getApi
+    social_modules_available = True
+except ImportError:
+    logging.warning("socialModules not found. Social media posting will be disabled.")
+    social_modules_available = False
 
-API_BASE = "https://apidatos.ree.es/"
-API_URL = "https://api.esios.ree.es/archives/70/download_json"
-TIME_RANGES = {
-    "llano1": ["08:00", "10:00"],
-    "punta1": ["10:00", "14:00"],
-    "llano2": ["14:00", "18:00"],
-    "punta2": ["18:00", "22:00"],
-    "llano3": ["22:00", "24:00"],
-    "valle": ["00:00", "08:00"],
-}
-BUTTON_SYMBOLS = {"llano": "🟠", "valle": "🟢", "punta": "🔴"}
-CACHE_DIR = "/tmp"
-
-clock = ["🕛", "🕐", "🕑", "🕒", "🕓", "🕔", "🕕", "🕖", "🕗", "🕘", "🕙", "🕚"]
+from config import (API_BASE, API_URL, TIME_RANGES, BUTTON_SYMBOLS, CACHE_DIR, clock)
 
 logging.basicConfig(
         stream=sys.stdout, level=logging.DEBUG, format="%(asctime)s %(message)s"
@@ -441,8 +432,10 @@ def main():
         logging.warning("Message too long. Truncating.")
         message = message[:280]
 
-    rules = socialModules.moduleRules.moduleRules()
-    rules.checkRules()
+    rules = None
+    if social_modules_available:
+        rules = socialModules.moduleRules.moduleRules()
+        rules.checkRules()
 
     destinations = {
         "twitter": "fernand0Test" if args.s else "botElectrico",
