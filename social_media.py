@@ -104,6 +104,7 @@ def publicar_mensaje_horario(destinations: Dict[str, str], message: str, rules: 
             # api = getApi(destination, account)
             indent = "  "
             api = rules.readConfigDst(indent, key, None, None)
+            print(f"Api: {api}")
             result = api.publishPost(message, "", "")
             logging.info(f"Published to {destination}: {result}")
 
