@@ -48,7 +48,7 @@ footer-links:
   x: botElectrico
   mastodon: https://mas.to/@botElectrico
   telegram: https://t.me/botElectrico
-  bluesky: botElectrico.bsky.social
+  bluesky: botElectrico
   url: https://api.esios.ree.es/archives/70/download_json
 #  stackoverflow: users/5671682/fernand0 # your stackoverflow profile, e.g. "users/50476/bart-kiers"
 
