@@ -67,6 +67,9 @@ def generar_resumen_diario(now: datetime.datetime, destinations: Dict[str, str],
     for destination, account in destinations.items():
         logging.info(f" Now in: {destination} - {account}")
         if account:
+            if rules is None:
+                logging.error(f"Social media rules not available for {destination}. Skipping post.")
+                continue
             key = ("direct", "post", destination, account)
             # api = getApi(destination, account)
             indent = "  "
@@ -100,6 +103,9 @@ def publicar_mensaje_horario(destinations: Dict[str, str], message: str, rules: 
     for destination, account in destinations.items():
         logging.info(f" Now in: {destination} - {account}")
         if account:
+            if rules is None:
+                logging.error(f"Social media rules not available for {destination}. Skipping post.")
+                continue
             key = ("direct", "post", destination, account)
             # api = getApi(destination, account)
             indent = "  "

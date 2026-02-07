@@ -27,13 +27,15 @@ from social_media import (
     get_social_media_destinations
 )
 
-# Import socialModules with error handling for cases where it's not available
 try:
-    import socialModules
     import socialModules.moduleRules
+    from socialModules.configMod import getApi
+    social_modules_available = True
 except ImportError:
-    socialModules = None
-    logging.warning("socialModules not found. Some social media functionality may be limited.")
+    logging.warning("socialModules not found. Social media posting will be disabled.")
+    social_modules_available = False
+
+from config import (API_BASE, API_URL, TIME_RANGES, BUTTON_SYMBOLS, CACHE_DIR, clock)
 
 logging.basicConfig(
         stream=sys.stdout, level=logging.DEBUG, format="%(asctime)s %(message)s"
