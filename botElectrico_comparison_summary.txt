@@ -1,0 +1,26 @@
+Key Differences Between main and gh-pages Branches - botElectrico.py:
+
+MAIN BRANCH:
+- Uses argparse for command-line arguments (-s for simulation, -t for time)
+- Imports many libraries including pandas, plotly for advanced visualization
+- Has modular structure with functions split across multiple files (data_handler.py, price_calculator.py, visualizer.py, social_media.py)
+- Uses API constants (API_BASE, API_URL, TIME_RANGES, etc.) defined in the file
+- Has comprehensive error handling for missing socialModules dependency
+- Implements both daily summary and hourly message posting functions
+- Uses structured data processing with safe_get function
+- Includes multiple visualization options (Chart.js, Plotly, Matplotlib)
+
+GH-PAGES BRANCH:
+- Simpler import structure with fewer dependencies
+- Uses direct imports from socialModules.configMod
+- More basic command-line handling (just checks for -t flag)
+- Hardcoded API URL construction
+- Different time range definitions
+- Simpler data retrieval and processing
+- Basic matplotlib plotting only
+- Different social media destination handling
+- Different message formatting and length checking
+- More basic error handling
+
+SUMMARY:
+The main branch represents a more mature, modular version with better error handling and multiple visualization options, while the gh-pages branch appears to be an older, simpler version that may be used for static site generation or a different deployment scenario.
