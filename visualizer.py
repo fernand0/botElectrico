@@ -122,7 +122,7 @@ def generate_matplotlib_graph(values: List[float], now_next: datetime.datetime) 
     plt.annotate(
         f"Min: {min_price:.3f} ({min_index}:00)",
         xy=(min_index, min_price),
-        xytext=(0.5, max_price - 0.01),
+        xytext=(0, max_price - 0.05),
         arrowprops=arrowprops,
     )
     plt.plot(values)
