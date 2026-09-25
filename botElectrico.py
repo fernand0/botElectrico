@@ -445,7 +445,7 @@ def main():
     rules.checkRules()
 
     destinations = {
-        "twitter": "fernand0Test" if args.s else "botElectrico",
+        # "twitter": "fernand0Test" if args.s else "botElectrico",
         "telegram": "testFernand0" if args.s else "botElectrico",
         "mastodon": "@fernand0Test@fosstodon.org" if args.s else "@botElectrico@mas.to",
         "blsk": None if args.s else "botElectrico.bsky.social",
